@@ -118,7 +118,8 @@
       <strong>Metodikas</strong><br><br>
       Savienojums: <b>LIVE</b><br>
       Instruments: <b>BTCUSDT</b><br>
-      Timeframe: <b>15m</b><br><br>
+      Timeframe: <b>15m</b><br><br>Savienojums: <b id="conn-status">-</b><br>
+BTC cena: <b id="btc-price">-</b><br>
       (Indikatori tiks pievienoti pakāpeniski)
     </div>
 
@@ -154,5 +155,312 @@
     compress.innerHTML = "<span>COMPRESS</span>";
     document.getElementById("compress-layer").appendChild(compress);
   </script>
-</body>
+<script>
+/**
+ * Super Breakout LIVE — Binance USDT-M Futures WebSocket Manager (MVP)
+ * - Fast stream: !markPrice@arr (all symbols)
+ * - Slow stream: btcusdt@kline_15m (single symbol for MVP)
+ * - Reconnect with exponential backoff
+ * - Latency + lastUpdate + stale detection
+ *
+ * NOTE:
+ * - Prices map uses normalized symbol keys: BTC, ETH, etc.
+ * - No prices are stored in TOP10 state (ban rule). Prices live here only.
+ */
+
+(function () {
+  // -----------------------------
+  // Utilities
+  // -----------------------------
+  const now = () => Date.now();
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+  // "BTCUSDT" -> "BTC"
+  function normalizeSymbol(sym) {
+    if (!sym) return "";
+    return sym.replace("USDT", "").toUpperCase();
+  }
+
+  // "BTCUSDT" -> "btcusdt"
+  function streamSymbol(sym) {
+    return (sym || "").toLowerCase();
+  }
+
+  // -----------------------------
+  // Global live data store (frontend truth)
+  // -----------------------------
+  const LiveData = {
+    prices: Object.create(null), // { BTC: number, ETH: number, ... }
+    klines15m: {
+      // symbolKey: { candles: [{t,o,h,l,c,v}], lastClosedTs }
+      BTC: { candles: [], lastClosedTs: 0 }
+    },
+    connection: {
+      status: "DISCONNECTED", // CONNECTED | DEGRADED | DISCONNECTED
+      latencyMs: null,
+      lastUpdateTs: 0,
+      lastMessageTs: 0,
+      reconnectAttempts: 0
+    }
+  };
+
+  // Expose for debugging in console
+  window.__SB_LIVE__ = LiveData;
+
+  // -----------------------------
+  // WebSocket Manager
+  // -----------------------------
+  class BinanceWSManager {
+    constructor() {
+      this.wsMark = null;
+      this.wsKline = null;
+
+      this.backoff = 1000; // start 1s
+      this.maxBackoff = 30000;
+
+      this.staleThresholdMs = 3000;
+      this.healthTimer = null;
+
+      // Subscribers
+      this.onPrices = new Set();
+      this.onKline15m = new Set();
+      this.onStatus = new Set();
+    }
+
+    start() {
+      this._connectMarkPriceAll();
+      this._connectKline15m("BTCUSDT"); // MVP: BTCUSDT only
+
+      // Health loop
+      this._startHealthMonitor();
+    }
+
+    stop() {
+      this._stopHealthMonitor();
+      this._close(this.wsMark);
+      this._close(this.wsKline);
+      this.wsMark = null;
+      this.wsKline = null;
+      this._setStatus("DISCONNECTED");
+    }
+
+    subscribePrices(fn) { this.onPrices.add(fn); return () => this.onPrices.delete(fn); }
+    subscribeKline15m(fn) { this.onKline15m.add(fn); return () => this.onKline15m.delete(fn); }
+    subscribeStatus(fn) { this.onStatus.add(fn); return () => this.onStatus.delete(fn); }
+
+    // -----------------------------
+    // Connections
+    // -----------------------------
+    _connectMarkPriceAll() {
+      const url = "wss://fstream.binance.com/ws/!markPrice@arr";
+      this._setStatus("DISCONNECTED");
+
+      this.wsMark = new WebSocket(url);
+
+      this.wsMark.onopen = () => {
+        LiveData.connection.reconnectAttempts = 0;
+        this.backoff = 1000;
+        this._touchMessage();
+        this._setStatus("CONNECTED");
+      };
+
+      this.wsMark.onmessage = (evt) => {
+        this._touchMessage();
+
+        // latency estimate (client receive time - server event time)
+        // markPrice array items have "E" event time
+        try {
+          const arr = JSON.parse(evt.data);
+          if (Array.isArray(arr) && arr.length) {
+            const serverE = arr[0].E;
+            if (typeof serverE === "number") {
+              LiveData.connection.latencyMs = clamp(now() - serverE, 0, 60000);
+            }
+          }
+
+          // Update prices map
+          // Each item: { s: "BTCUSDT", p: "xxxxx" } where p is markPrice
+          if (Array.isArray(arr)) {
+            for (const it of arr) {
+              const sym = it && it.s;
+              const p = it && it.p;
+              if (!sym || !p) continue;
+              const key = normalizeSymbol(sym);
+              const num = Number(p);
+              if (!Number.isFinite(num)) continue;
+              LiveData.prices[key] = num;
+            }
+
+            // Notify subscribers (batch)
+            for (const fn of this.onPrices) {
+              try { fn(LiveData.prices); } catch (e) {}
+            }
+          }
+        } catch (e) {
+          // ignore parse errors
+        }
+      };
+
+      this.wsMark.onerror = () => {
+        this._setStatus("DEGRADED");
+      };
+
+      this.wsMark.onclose = () => {
+        this._setStatus("DISCONNECTED");
+        this._scheduleReconnect(() => this._connectMarkPriceAll());
+      };
+    }
+
+    _connectKline15m(symbol) {
+      const s = streamSymbol(symbol);
+      const url = `wss://fstream.binance.com/ws/${s}@kline_15m`;
+
+      this.wsKline = new WebSocket(url);
+
+      this.wsKline.onopen = () => {
+        this._touchMessage();
+      };
+
+      this.wsKline.onmessage = (evt) => {
+        this._touchMessage();
+        try {
+          const msg = JSON.parse(evt.data);
+          if (!msg || !msg.k) return;
+
+          // Kline payload
+          const k = msg.k;
+          const sym = (k.s || "").toUpperCase();
+          const key = normalizeSymbol(sym);
+
+          const candle = {
+            t: k.t,              // open time
+            o: Number(k.o),
+            h: Number(k.h),
+            l: Number(k.l),
+            c: Number(k.c),
+            v: Number(k.v),
+            x: !!k.x             // is closed
+          };
+
+          if (!LiveData.klines15m[key]) {
+            LiveData.klines15m[key] = { candles: [], lastClosedTs: 0 };
+          }
+          const store = LiveData.klines15m[key];
+
+          // Maintain rolling buffer (max 300)
+          const buf = store.candles;
+          const last = buf.length ? buf[buf.length - 1] : null;
+
+          if (!last || last.t !== candle.t) {
+            // new candle start
+            buf.push(candle);
+            if (buf.length > 300) buf.shift();
+          } else {
+            // update current candle
+            buf[buf.length - 1] = candle;
+          }
+
+          if (candle.x) {
+            store.lastClosedTs = candle.t;
+          }
+
+          for (const fn of this.onKline15m) {
+            try { fn(key, store); } catch (e) {}
+          }
+        } catch (e) {}
+      };
+
+      this.wsKline.onerror = () => {
+        this._setStatus("DEGRADED");
+      };
+
+      this.wsKline.onclose = () => {
+        // Keep markPrice running even if kline drops
+        this._scheduleReconnect(() => this._connectKline15m(symbol));
+      };
+    }
+
+    // -----------------------------
+    // Health & Reconnect
+    // -----------------------------
+    _touchMessage() {
+      LiveData.connection.lastMessageTs = now();
+      LiveData.connection.lastUpdateTs = now();
+    }
+
+    _setStatus(status) {
+      LiveData.connection.status = status;
+      for (const fn of this.onStatus) {
+        try { fn(LiveData.connection); } catch (e) {}
+      }
+
+      // Optional: reflect in UI if you have a place for it
+      const el = document.getElementById("conn-status");
+      if (el) {
+        el.textContent = `${status} | latency: ${LiveData.connection.latencyMs ?? "-"}ms`;
+      }
+    }
+
+    _startHealthMonitor() {
+      if (this.healthTimer) return;
+      this.healthTimer = setInterval(() => {
+        const age = now() - (LiveData.connection.lastMessageTs || 0);
+
+        if (LiveData.connection.status === "CONNECTED" && age > this.staleThresholdMs) {
+          this._setStatus("DEGRADED");
+        }
+
+        if (age > this.staleThresholdMs * 2) {
+          // Hard stale -> reconnect mark WS (main truth)
+          this._forceReconnectMark();
+        }
+      }, 1000);
+    }
+
+    _stopHealthMonitor() {
+      if (this.healthTimer) clearInterval(this.healthTimer);
+      this.healthTimer = null;
+    }
+
+    _forceReconnectMark() {
+      // If already closed, no action
+      if (!this.wsMark) return;
+      try { this.wsMark.close(); } catch (e) {}
+    }
+
+    _scheduleReconnect(connectFn) {
+      LiveData.connection.reconnectAttempts += 1;
+      const delay = this.backoff;
+      this.backoff = Math.min(this.backoff * 2, this.maxBackoff);
+
+      setTimeout(() => {
+        try { connectFn(); } catch (e) {}
+      }, delay);
+    }
+
+    _close(ws) {
+      if (!ws) return;
+      try { ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null; ws.close(); } catch (e) {}
+    }
+  }
+
+  // -----------------------------
+  // Start manager
+  // -----------------------------
+  const ws = new BinanceWSManager();
+  ws.start();
+
+  // Example subscribers (debug)
+  ws.subscribeStatus((c) => {
+    console.log("[WS STATUS]", c.status, "lat", c.latencyMs, "ms", "last", new Date(c.lastUpdateTs).toLocaleTimeString());
+  });
+
+  // Optional: show one live price in metrics panel if you add a span id="btc-price"
+  ws.subscribePrices((prices) => {
+    const el = document.getElementById("btc-price");
+    if (el && prices.BTC) el.textContent = prices.BTC.toFixed(2);
+  });
+
+})();
+</script>/body>
 </html>
