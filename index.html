@@ -59,7 +59,26 @@
       font-weight: bold;
       letter-spacing: 4px;
       color: rgba(0, 255, 150, 0.35);
-    }
+    }<script>
+  const vacuumZone = document.querySelector(".vacuum-zone");
+  const compressZone = document.querySelector(".compress-zone");
+
+  document.getElementById("vacuumTop").oninput = e => {
+    vacuumZone.style.top = e.target.value + "%";
+  };
+
+  document.getElementById("vacuumHeight").oninput = e => {
+    vacuumZone.style.height = e.target.value + "%";
+  };
+
+  document.getElementById("compressTop").oninput = e => {
+    compressZone.style.top = e.target.value + "%";
+  };
+
+  document.getElementById("compressHeight").oninput = e => {
+    compressZone.style.height = e.target.value + "px";
+  };
+</script>
 
     /* ===== COMPRESS ZONE ===== */
 
@@ -101,7 +120,26 @@
         flex: 1;
         border-top: none;
         border-left: 1px solid #1e2329;
-      }
+      }<hr style="border-color:#1e2329">#metrics input[type=range] {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+<strong>Kalibrācija</strong><br><br>
+
+<label>Vacuum pozīcija</label>
+<input type="range" id="vacuumTop" min="0" max="80" value="35">
+
+<label>Vacuum augstums</label>
+<input type="range" id="vacuumHeight" min="5" max="40" value="20">
+
+<br><br>
+
+<label>Compress pozīcija</label>
+<input type="range" id="compressTop" min="0" max="80" value="55">
+
+<label>Compress biezums</label>
+<input type="range" id="compressHeight" min="4" max="20" value="10">
     }
   </style>
 </head>
