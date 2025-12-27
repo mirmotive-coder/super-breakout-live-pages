@@ -585,5 +585,83 @@
   computeAndRenderPotentialTop10();
 
   console.log("C1 Potential Scanner initialized");
+          </script><script>
+  // =========================================
+  // B/C2: LOAD REAL BINANCE FUTURES SYMBOLS
+  // (REST ONLY FOR SYMBOL LIST; NO PRICES)
+  // =========================================
+
+  async function loadBinanceFuturesUsdtPerpSymbols() {
+    const url = "https://fapi.binance.com/fapi/v1/exchangeInfo";
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) throw new Error("Failed to load exchangeInfo: " + res.status);
+    const data = await res.json();
+
+    const symbols = (data.symbols || [])
+      .filter(s =>
+        s.contractType === "PERPETUAL" &&
+        s.quoteAsset === "USDT" &&
+        s.status === "TRADING"
+      )
+      .map(s => s.symbol);
+
+    // Sort for stable UI
+    symbols.sort((a,b) => a.localeCompare(b));
+    return symbols;
+  }
+
+  (async () => {
+    try {
+      const symbols = await loadBinanceFuturesUsdtPerpSymbols();
+      console.log("Loaded Binance Futures USDT perpetual symbols:", symbols.length);
+
+      // IMPORTANT:
+      // This expects your C1 script created a global C1_UNIVERSE (or we recreate it).
+      // If C1_UNIVERSE is const in your file, we cannot reassign.
+      // So we store into window.UNIVERSE and the C1 compute should read from it next step.
+      window.UNIVERSE = symbols;
+
+      // Soft user feedback in metrics
+      const metrics = document.getElementById("metrics");
+      if (metrics) {
+        const info = document.createElement("div");
+        info.style.marginTop = "10px";
+        info.style.opacity = "0.75";
+        info.style.fontSize = "12px";
+        info.innerHTML = `Binance Futures pāri ielādēti: <b>${symbols.length}</b>`;
+        metrics.appendChild(info);
+      }
+
+      // If your C1 has a function to recompute, call it if exists.
+      if (typeof window.computeAndRenderPotentialTop10 === "function") {
+        window.computeAndRenderPotentialTop10();
+      } else {
+        console.log("Note: computeAndRenderPotentialTop10() not found; Top-10 will refresh on next slider input.");
+      }
+    } catch (e) {
+      console.error(e);
+      const metrics = document.getElementById("metrics");
+      if (metrics) {
+        const err = document.createElement("div");
+        err.style.marginTop = "10px";
+        err.style.color = "rgba(255,90,90,0.9)";
+        err.style.fontSize = "12px";
+        err.innerText = "Neizdevās ielādēt Binance Futures pārus (pārbaudi internetu).";
+        metrics.appendChild(err);
+      }
+    }
+  })();
+          </script><script>
+  // === SAFE UNIVERSE OVERRIDE FOR C1 ===
+  // If Binance Futures symbols are loaded, force C1 to use them
+  if (window.UNIVERSE && Array.isArray(window.UNIVERSE)) {
+    window.getScannerUniverse = function() {
+      return window.UNIVERSE;
+    };
+  } else {
+    window.getScannerUniverse = function() {
+      return typeof C1_UNIVERSE !== "undefined" ? C1_UNIVERSE : [];
+    };
+  }
           </script></body>
 </html>
