@@ -80,3 +80,36 @@
   </script>
 </body>
 </html>
+<script>
+// === Indicator system scaffold (no calculations yet) ===
+
+const indicators = {
+  compress: {
+    enabled: true,
+    active: false
+  },
+  vacuum: {
+    enabled: false,
+    zones: []
+  },
+  aggression: {
+    enabled: false,
+    buyZones: [],
+    sellZones: []
+  },
+  breakout: {
+    enabled: true,
+    strength: 0,
+    probability: 0
+  }
+};
+
+// System state (future use)
+const systemState = {
+  instrument: "BTCUSDT",
+  timeframe: "15m",
+  mode: "LIVE"
+};
+
+console.log("Indicator system initialized", indicators, systemState);
+</script>
