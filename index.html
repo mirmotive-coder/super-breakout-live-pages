@@ -663,5 +663,123 @@
       return typeof C1_UNIVERSE !== "undefined" ? C1_UNIVERSE : [];
     };
   }
+          </script><script>
+  // =========================================
+  // A: INSTRUMENT SELECTOR + WATCHLIST
+  // =========================================
+
+  function qs(id){ return document.getElementById(id); }
+
+  // --- Watchlist state ---
+  const WATCHLIST_KEY = "watchlist_symbols_v1";
+  function loadWatchlist(){
+    try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY)) || []; }
+    catch { return []; }
+  }
+  function saveWatchlist(list){
+    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
+  }
+
+  let watchlist = loadWatchlist();
+
+  // --- Ensure UI container ---
+  function ensureInstrumentPanel(){
+    const metrics = qs("metrics");
+    if (!metrics || qs("instrument-panel")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "instrument-panel";
+    panel.style.marginTop = "12px";
+
+    panel.innerHTML = `
+      <hr style="border-color:#1e2329;margin:12px 0;">
+      <strong>Instrumenti</strong>
+
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <select id="instrument-select" style="flex:1;background:#0b0e11;color:#cfd3dc;border:1px solid #1e2329;padding:8px;border-radius:8px;"></select>
+        <button id="add-watch" style="background:#0b0e11;color:#cfd3dc;border:1px solid #1e2329;padding:8px 10px;border-radius:8px;">⭐</button>
+      </div>
+
+      <div style="margin-top:10px;opacity:0.8;font-size:12px;">Watchlist</div>
+      <div id="watchlist" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+    `;
+
+    metrics.appendChild(panel);
+  }
+
+  // --- Populate selector ---
+  function populateSelector(){
+    const sel = qs("instrument-select");
+    if (!sel) return;
+
+    const universe = window.UNIVERSE || [];
+    sel.innerHTML = "";
+
+    universe.forEach(sym=>{
+      const opt = document.createElement("option");
+      opt.value = sym;
+      opt.textContent = sym;
+      sel.appendChild(opt);
+    });
+  }
+
+  // --- Render watchlist ---
+  function renderWatchlist(){
+    const wrap = qs("watchlist");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+
+    watchlist.forEach(sym=>{
+      const btn = document.createElement("button");
+      btn.textContent = sym;
+      btn.style.background = "rgba(255,255,255,0.05)";
+      btn.style.color = "#cfd3dc";
+      btn.style.border = "1px solid #1e2329";
+      btn.style.borderRadius = "10px";
+      btn.style.padding = "6px 10px";
+      btn.style.cursor = "pointer";
+      btn.onclick = ()=> window.switchSymbol(sym);
+      wrap.appendChild(btn);
+    });
+  }
+
+  // --- Wire events ---
+  function wireInstrumentEvents(){
+    const sel = qs("instrument-select");
+    const add = qs("add-watch");
+    if (!sel || !add) return;
+
+    sel.onchange = ()=> window.switchSymbol(sel.value);
+
+    add.onclick = ()=>{
+      const sym = sel.value;
+      if (!sym) return;
+      if (!watchlist.includes(sym)){
+        watchlist.push(sym);
+        saveWatchlist(watchlist);
+        renderWatchlist();
+      }
+    };
+  }
+
+  // --- Init ---
+  function initInstrumentSelector(){
+    ensureInstrumentPanel();
+    populateSelector();
+    renderWatchlist();
+    wireInstrumentEvents();
+  }
+
+  // Run after universe is ready (safe retry)
+  let tries = 0;
+  const iv = setInterval(()=>{
+    if (Array.isArray(window.UNIVERSE) && window.UNIVERSE.length){
+      initInstrumentSelector();
+      clearInterval(iv);
+    }
+    if (++tries > 40) clearInterval(iv);
+  }, 250);
+
+  console.log("Instrument selector + watchlist initialized");
           </script></body>
 </html>
