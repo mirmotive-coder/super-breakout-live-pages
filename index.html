@@ -2,9 +2,12 @@
 <html lang="lv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Super Breakout LIVE</title>
 
+  <!-- =======================
+        GLOBAL STYLES
+  ======================== -->
   <style>
     body {
       margin: 0;
@@ -19,10 +22,18 @@
       height: 100vh;
     }
 
-    /* ===== CHART ===== */
+    @media (min-width: 768px) {
+      #app {
+        flex-direction: row;
+      }
+    }
+
+    /* =======================
+        CHART AREA
+    ======================== */
     #chart-wrapper {
       position: relative;
-      flex: 1;
+      flex: 3;
       min-height: 60vh;
     }
 
@@ -31,23 +42,21 @@
       height: 100%;
     }
 
-    /* ===== OVERLAY LAYERS ===== */
-    #vacuum-layer,
-    #compress-layer {
+    /* =======================
+        OVERLAY LAYERS
+    ======================== */
+    .overlay {
       position: absolute;
       inset: 0;
       pointer-events: none;
     }
 
-    #vacuum-layer { z-index: 5; }
-    #compress-layer { z-index: 6; }
-
+    /* VACUUM */
     .vacuum-zone {
       position: absolute;
       left: 5%;
       width: 90%;
-      height: 20%;
-      top: 30%;
+      height: 160px;
       background: rgba(0, 255, 150, 0.12);
       border: 2px solid rgba(0, 255, 150, 0.6);
       display: flex;
@@ -59,49 +68,81 @@
       color: rgba(0, 255, 150, 0.35);
     }
 
+    /* COMPRESS */
     .compress-zone {
       position: absolute;
       left: 15%;
       width: 70%;
-      height: 48px;
-      top: 55%;
+      height: 56px;
       background: rgba(255, 180, 0, 0.18);
       border: 2px solid rgba(255, 180, 0, 0.7);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      letter-spacing: 2px;
+      color: rgba(255, 200, 80, 0.7);
+    }
+
+    /* AGGRESSION */
+    .aggression-buy {
+      position: absolute;
+      left: 10%;
+      width: 80%;
+      height: 48px;
+      background: rgba(0, 200, 120, 0.18);
+      border: 2px solid rgba(0, 200, 120, 0.7);
       border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 16px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: rgba(255, 200, 80, 0.6);
+      color: rgba(0, 200, 120, 0.7);
     }
 
-    /* ===== METRICS / CONTROLS ===== */
-    #metrics {
+    .aggression-sell {
+      position: absolute;
+      left: 10%;
+      width: 80%;
+      height: 48px;
+      background: rgba(200, 60, 60, 0.18);
+      border: 2px solid rgba(200, 60, 60, 0.7);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: rgba(200, 60, 60, 0.7);
+    }
+
+    /* =======================
+        SIDE PANEL
+    ======================== */
+    #panel {
+      flex: 1;
       padding: 12px;
-      border-top: 1px solid #1e2329;
+      border-left: 1px solid #1e2329;
       background: #0b0e11;
       font-size: 14px;
+      overflow-y: auto;
     }
 
-    #metrics input[type=range] {
+    h3 {
+      margin: 12px 0 6px;
+      font-size: 14px;
+      color: #9aa4b2;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] {
       width: 100%;
-      margin-bottom: 10px;
-    }
-
-    @media (min-width: 768px) {
-      #app {
-        flex-direction: row;
-      }
-      #chart-wrapper {
-        flex: 3;
-      }
-      #metrics {
-        flex: 1;
-        border-top: none;
-        border-left: 1px solid #1e2329;
-      }
     }
   </style>
 </head>
@@ -109,57 +150,48 @@
 <body>
 <div id="app">
 
-  <!-- ===== CHART AREA ===== -->
+  <!-- =======================
+        CHART
+  ======================== -->
   <div id="chart-wrapper">
     <div id="chart"></div>
-    <div id="vacuum-layer"></div>
-    <div id="compress-layer"></div>
+
+    <div id="overlay-vacuum" class="overlay"></div>
+    <div id="overlay-compress" class="overlay"></div>
+    <div id="overlay-aggression" class="overlay"></div>
   </div>
 
-  <!-- ===== METRICS & CONTROLS ===== -->
-  <div id="metrics">
-    <strong>Metodikas</strong><br><br>
+  <!-- =======================
+        CONTROL PANEL
+  ======================== -->
+  <div id="panel">
+    <h3>Kontrole</h3>
+    <label><input type="checkbox" id="toggleVacuum" checked> Vacuum</label>
+    <label><input type="checkbox" id="toggleCompress" checked> Compress</label>
+    <label><input type="checkbox" id="toggleAggression" checked> Aggression</label>
+
+    <h3>Kalibrācija</h3>
+    Vacuum pozīcija
+    <input type="range" id="vacuumTop" min="0" max="80" value="20">
+    Vacuum augstums
+    <input type="range" id="vacuumHeight" min="60" max="300" value="160">
+
+    Compress pozīcija
+    <input type="range" id="compressTop" min="0" max="80" value="50">
+
+    <h3>Metodikas</h3>
     Savienojums: <b>LIVE</b><br>
     Instruments: <b>BTCUSDT</b><br>
-    Timeframe: <b>15m</b><br><br>
-
-    <strong>Kontrole</strong><br><br>
-
-    <label>
-      <input type="checkbox" id="toggle-vacuum" checked>
-      Vacuum
-    </label><br>
-
-    <label>
-      <input type="checkbox" id="toggle-compress" checked>
-      Compress
-    </label><br>
-
-    <label style="opacity:0.4;">
-      <input type="checkbox" disabled>
-      Aggression (drīzumā)
-    </label>
-
-    <hr style="border-color:#1e2329;margin:12px 0;">
-
-    <strong>Kalibrācija</strong><br><br>
-
-    <label>Vacuum pozīcija</label>
-    <input type="range" id="vacuumTop" min="0" max="80" value="30">
-
-    <label>Vacuum augstums</label>
-    <input type="range" id="vacuumHeight" min="5" max="40" value="20">
-
-    <label>Compress pozīcija</label>
-    <input type="range" id="compressTop" min="0" max="80" value="55">
-
-    <label>Compress biezums</label>
-    <input type="range" id="compressHeight" min="20" max="80" value="48">
+    Timeframe: <b>15m</b><br>
+    <br>
+    (Indikatori tiks pievienoti pakāpeniski)
   </div>
 
 </div>
 
-<!-- ===== TradingView ===== -->
+<!-- =======================
+      TRADINGVIEW
+======================== -->
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
   new TradingView.widget({
@@ -171,615 +203,54 @@
     theme: "dark",
     style: "1",
     locale: "en",
-    hide_top_toolbar: false,
     hide_legend: true,
     allow_symbol_change: false,
     save_image: false
   });
 </script>
 
-<!-- ===== OVERLAY LOGIC ===== -->
+<!-- =======================
+      LOGIC (STATIC DEMO)
+======================== -->
 <script>
-  // Create zones
-  const vacuumZone = document.createElement("div");
-  vacuumZone.className = "vacuum-zone";
-  vacuumZone.innerText = "VACUUM";
+  const vacuum = document.createElement("div");
+  vacuum.className = "vacuum-zone";
+  vacuum.innerText = "VACUUM";
+  document.getElementById("overlay-vacuum").appendChild(vacuum);
 
-  const compressZone = document.createElement("div");
-  compressZone.className = "compress-zone";
-  compressZone.innerText = "COMPRESS";
+  const compress = document.createElement("div");
+  compress.className = "compress-zone";
+  compress.innerText = "COMPRESS";
+  document.getElementById("overlay-compress").appendChild(compress);
 
-  document.getElementById("vacuum-layer").appendChild(vacuumZone);
-  document.getElementById("compress-layer").appendChild(compressZone);
+  const buyAgg = document.createElement("div");
+  buyAgg.className = "aggression-buy";
+  buyAgg.innerText = "BUY AGGRESSION";
+  buyAgg.style.top = "70%";
+  document.getElementById("overlay-aggression").appendChild(buyAgg);
 
-  // Toggles
-  document.getElementById("toggle-vacuum").onchange = e => {
-    vacuumZone.style.display = e.target.checked ? "flex" : "none";
-  };
+  const sellAgg = document.createElement("div");
+  sellAgg.className = "aggression-sell";
+  sellAgg.innerText = "SELL AGGRESSION";
+  sellAgg.style.top = "5%";
+  document.getElementById("overlay-aggression").appendChild(sellAgg);
 
-  document.getElementById("toggle-compress").onchange = e => {
-    compressZone.style.display = e.target.checked ? "flex" : "none";
-  };
+  function update() {
+    vacuum.style.top = vacuumTop.value + "%";
+    vacuum.style.height = vacuumHeight.value + "px";
+    compress.style.top = compressTop.value + "%";
+  }
 
-  // Sliders
-  document.getElementById("vacuumTop").oninput = e => {
-    vacuumZone.style.top = e.target.value + "%";
-  };
+  toggleVacuum.onchange = () => overlay-vacuum.style.display = toggleVacuum.checked ? "block" : "none";
+  toggleCompress.onchange = () => overlay-compress.style.display = toggleCompress.checked ? "block" : "none";
+  toggleAggression.onchange = () => overlay-aggression.style.display = toggleAggression.checked ? "block" : "none";
 
-  document.getElementById("vacuumHeight").oninput = e => {
-    vacuumZone.style.height = e.target.value + "%";
-  };
+  vacuumTop.oninput = update;
+  vacuumHeight.oninput = update;
+  compressTop.oninput = update;
 
-  document.getElementById("compressTop").oninput = e => {
-    compressZone.style.top = e.target.value + "%";
-  };
-
-  document.getElementById("compressHeight").oninput = e => {
-    compressZone.style.height = e.target.value + "px";
-  };
+  update();
 </script>
-<script>
-  // ================================
-  // AGGRESSION OVERLAY (VISUAL ONLY)
-  // ================================
 
-  // 1) Ensure aggression layer exists above chart
-  function ensureAggressionLayer() {
-    let layer = document.getElementById("aggression-layer");
-    if (!layer) {
-      const wrapper = document.getElementById("chart-wrapper");
-      layer = document.createElement("div");
-      layer.id = "aggression-layer";
-      layer.style.position = "absolute";
-      layer.style.inset = "0";
-      layer.style.pointerEvents = "none";
-      layer.style.zIndex = "7"; // above vacuum(5) + compress(6)
-      wrapper.appendChild(layer);
-    }
-    return layer;
-  }
-
-  // 2) Create a visual aggression zone
-  function createAggressionZone({ type, topPct, heightPct, label }) {
-    const zone = document.createElement("div");
-    zone.className = "aggression-zone";
-
-    zone.style.position = "absolute";
-    zone.style.left = "5%";
-    zone.style.width = "90%";
-    zone.style.top = `${topPct}%`;
-    zone.style.height = `${heightPct}%`;
-    zone.style.display = "flex";
-    zone.style.alignItems = "center";
-    zone.style.justifyContent = "center";
-    zone.style.borderRadius = "10px";
-    zone.style.border = "1px solid rgba(255,255,255,0.10)";
-
-    // Color logic
-    const isBuy = type === "BUY";
-    zone.style.background = isBuy
-      ? "rgba(0, 200, 120, 0.12)"
-      : "rgba(255, 70, 70, 0.12)";
-
-    zone.style.outline = isBuy
-      ? "2px solid rgba(0, 255, 150, 0.35)"
-      : "2px solid rgba(255, 90, 90, 0.35)";
-
-    zone.style.color = isBuy
-      ? "rgba(0, 255, 150, 0.35)"
-      : "rgba(255, 90, 90, 0.35)";
-
-    zone.style.fontWeight = "bold";
-    zone.style.letterSpacing = "3px";
-    zone.style.fontSize = "18px";
-    zone.innerText = label || (isBuy ? "BUY AGGRESSION" : "SELL AGGRESSION");
-
-    return zone;
-  }
-
-  // 3) Add demo aggression zones (later replaced by algorithm)
-  const aggressionLayer = ensureAggressionLayer();
-
-  const demoAggressions = [
-    // Example: below compress = "fuel wall"
-    { type: "BUY",  topPct: 70, heightPct: 6, label: "BUY AGGRESSION" },
-    // Example: above price = sell pressure / distribution zone
-    { type: "SELL", topPct: 18, heightPct: 6, label: "SELL AGGRESSION" }
-  ];
-
-  // Clean and render
-  function renderAggressions() {
-    aggressionLayer.innerHTML = "";
-    demoAggressions.forEach(cfg => aggressionLayer.appendChild(createAggressionZone(cfg)));
-  }
-  renderAggressions();
-
-  // 4) Add toggle into metrics panel (if not already present)
-  function ensureAggressionToggle() {
-    const metrics = document.getElementById("metrics");
-    if (!metrics) return;
-
-    // Avoid duplicates
-    if (document.getElementById("toggle-aggression")) return;
-
-    // Insert under existing toggles if possible
-    const hr = metrics.querySelector("hr");
-    const container = document.createElement("div");
-    container.style.marginBottom = "8px";
-
-    container.innerHTML = `
-      <label>
-        <input type="checkbox" id="toggle-aggression" checked>
-        Aggression
-      </label>
-    `;
-
-    // Place before first <hr> (keeps layout tidy)
-    if (hr) {
-      metrics.insertBefore(container, hr);
-    } else {
-      metrics.appendChild(container);
-    }
-
-    // Toggle behavior
-    document.getElementById("toggle-aggression").onchange = e => {
-      aggressionLayer.style.display = e.target.checked ? "block" : "none";
-    };
-  }
-
-  // Run toggle injection after DOM is ready
-  ensureAggressionToggle();
-
-  console.log("Aggression overlay initialized");
-</script>
-<script>
-  // =========================================
-  // C1: POTENTIAL SCANNER SKELETON (NO API)
-  // =========================================
-  // Goal:
-  // - Define "PotentialScore" model (Compress + Vacuum + Aggression + StructureBonus)
-  // - Render Top-10 panel with state icons + score
-  // - Click row => switch TradingView symbol (reuses existing switchSymbol if present)
-  //
-  // This is NOT live scanning yet. It is the stable scoring backbone.
-  // Next step will feed real Binance Futures symbols + live metrics.
-
-  // ---------- Helpers ----------
-  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-  // Safe DOM getter
-  function el(id) { return document.getElementById(id); }
-
-  // Try to reuse existing switchSymbol() if you already have it somewhere.
-  // If not present, provide a safe local version.
-  if (typeof window.switchSymbol !== "function") {
-    window.switchSymbol = function(symbol) {
-      // Update visible instrument label (best-effort)
-      const metrics = el("metrics");
-      if (metrics && metrics.innerHTML.includes("Instruments:")) {
-        metrics.innerHTML = metrics.innerHTML.replace(/Instruments:\s*<b>.*?<\/b>/, `Instruments: <b>${symbol}</b>`);
-      }
-
-      // Rebuild TradingView widget reliably
-      const chart = el("chart");
-      if (chart) chart.innerHTML = "";
-      if (window.TradingView && window.TradingView.widget) {
-        new TradingView.widget({
-          container_id: "chart",
-          autosize: true,
-          symbol: "BINANCE:" + symbol,
-          interval: "15",
-          timezone: "Etc/UTC",
-          theme: "dark",
-          style: "1",
-          locale: "en",
-          hide_top_toolbar: false,
-          hide_legend: true,
-          allow_symbol_change: false,
-          save_image: false
-        });
-      }
-    };
-  }
-
-  // ---------- C1 Data Model ----------
-  // This is the "universe" placeholder for now (we will replace with Binance Futures list in B/C2).
-  const C1_UNIVERSE = [
-    "BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","ADAUSDT","AVAXUSDT","DOGEUSDT",
-    "OPUSDT","ARBUSDT","LINKUSDT","MATICUSDT","LTCUSDT","BCHUSDT","ATOMUSDT","NEARUSDT",
-    "APTUSDT","SUIUSDT","INJUSDT","RNDRUSDT","FTMUSDT","ETCUSDT","1000PEPEUSDT","SHIBUSDT",
-    "SEIUSDT","TIAUSDT","TRXUSDT","FILUSDT","ICPUSDT","UNIUSDT"
-  ];
-
-  // ---------- C1 Scoring Logic (POTENTIAL) ----------
-  // We define a stable 0..100 score.
-  //
-  // Inputs (later will be computed from live data):
-  // - CompressScore: quality of tight range (0..40)
-  // - VacuumScore: distance/clean "empty space" (0..40)
-  // - AggressionScore: presence of anchor zones (0..15)
-  // - StructureBonus: pattern bonus (0..5)
-  //
-  // Total: 0..100
-
-  function computePotentialScore(input) {
-    const compressScore    = clamp(input.compressScore ?? 0, 0, 40);
-    const vacuumScore      = clamp(input.vacuumScore ?? 0, 0, 40);
-    const aggressionScore  = clamp(input.aggressionScore ?? 0, 0, 15);
-    const structureBonus   = clamp(input.structureBonus ?? 0, 0, 5);
-    return Math.round(compressScore + vacuumScore + aggressionScore + structureBonus);
-  }
-
-  // ---------- Temporary Metrics Source (C1) ----------
-  // For NOW:
-  // - We derive a "current calibration snapshot" from your sliders/zones,
-  //   then apply slight deterministic variation per symbol (so Top-10 changes and is testable).
-  //
-  // This keeps the skeleton meaningful, without pretending it is "live".
-
-  function getCurrentCalibrationSnapshot() {
-    // Read your existing sliders if present
-    const vacuumTop = parseFloat(el("vacuumTop")?.value ?? "30");       // 0..80
-    const vacuumH   = parseFloat(el("vacuumHeight")?.value ?? "20");    // 5..40
-    const compTop   = parseFloat(el("compressTop")?.value ?? "55");     // 0..80
-    const compH     = parseFloat(el("compressHeight")?.value ?? "48");  // px (20..80)
-
-    // Read toggles if present
-    const vacuumOn   = !!el("toggle-vacuum")?.checked;
-    const compressOn = !!el("toggle-compress")?.checked;
-    const aggrOn     = !!el("toggle-aggression")?.checked; // from our aggression block
-
-    // Map calibration into rough scoring components (C1 only)
-    // Compress: smaller thickness => tighter => more "compress quality"
-    // Vacuum: larger height => more "space"
-    const compressTightness = clamp((80 - compH) / 60, 0, 1); // compH 20..80 => 1..0
-    const vacuumSpace       = clamp((vacuumH - 5) / 35, 0, 1); // vacuumH 5..40 => 0..1
-
-    const compressScore = compressOn ? Math.round(10 + 30 * compressTightness) : 0; // 0..40
-    const vacuumScore   = vacuumOn ? Math.round(10 + 30 * vacuumSpace) : 0;         // 0..40
-
-    // Aggression anchors: on => base points; later will be computed (buy below, sell above)
-    const aggressionScore = aggrOn ? 10 : 0; // 0..15 placeholder
-
-    // Structure bonus: if vacuum + compress both on => small bonus (placeholder for “2 vacuum” logic later)
-    const structureBonus = (vacuumOn && compressOn) ? 3 : 0; // 0..5 placeholder
-
-    return { vacuumTop, vacuumH, compTop, compH, vacuumOn, compressOn, aggrOn, compressScore, vacuumScore, aggressionScore, structureBonus };
-  }
-
-  // Deterministic symbol variation (stable per symbol, no randomness)
-  function symbolHash(sym) {
-    let h = 0;
-    for (let i=0; i<sym.length; i++) h = (h * 31 + sym.charCodeAt(i)) >>> 0;
-    return h;
-  }
-
-  function buildC1MetricsForSymbol(symbol, snapshot) {
-    const h = symbolHash(symbol);
-    // Variation -2..+2 for compress/vacuum, -1..+1 for aggression/bonus
-    const v1 = ((h % 5) - 2);
-    const v2 = (((h / 7) % 5) - 2);
-    const v3 = (((h / 11) % 3) - 1);
-    const v4 = (((h / 13) % 3) - 1);
-
-    const compressScore   = clamp(snapshot.compressScore + v1, 0, 40);
-    const vacuumScore     = clamp(snapshot.vacuumScore + v2, 0, 40);
-    const aggressionScore = clamp(snapshot.aggressionScore + v3, 0, 15);
-    const structureBonus  = clamp(snapshot.structureBonus + v4, 0, 5);
-
-    // State flags (visual icons)
-    const compress = compressScore >= 18; // placeholder threshold
-    const vacuum   = vacuumScore >= 18;   // placeholder threshold
-    const aggression = aggressionScore >= 8;
-
-    return { symbol, compressScore, vacuumScore, aggressionScore, structureBonus, compress, vacuum, aggression };
-  }
-
-  // ---------- UI Rendering (Top-10) ----------
-  function ensurePotentialPanel() {
-    const metrics = el("metrics");
-    if (!metrics) return null;
-
-    // Avoid duplicates
-    if (el("potential-panel")) return el("potential-panel");
-
-    const wrap = document.createElement("div");
-    wrap.id = "potential-panel";
-    wrap.style.marginTop = "12px";
-
-    wrap.innerHTML = `
-      <hr style="border-color:#1e2329;margin:12px 0;">
-      <strong>TOP 10 (Potenciāls)</strong>
-      <div style="opacity:0.65;margin:6px 0 10px 0;font-size:12px;">
-        C1 skelets: score = compress + vacuum + aggression + struktūra (bez live datiem).
-      </div>
-      <div id="top10-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-      <div style="opacity:0.6;margin-top:10px;font-size:12px;">
-        Klikšķini uz pāra, lai pārslēgtu grafiku.
-      </div>
-    `;
-
-    metrics.appendChild(wrap);
-    return wrap;
-  }
-
-  function badge(text, active, color) {
-    const s = [
-      "display:inline-block",
-      "padding:2px 8px",
-      "border-radius:10px",
-      "font-size:11px",
-      "border:1px solid #1e2329",
-      "margin-left:6px",
-      active ? "opacity:1" : "opacity:0.22",
-      `color:${color}`
-    ].join(";");
-    return `<span style="${s}">${text}</span>`;
-  }
-
-  function renderTop10(items) {
-    const list = el("top10-list");
-    if (!list) return;
-    list.innerHTML = "";
-
-    items.forEach((it, idx) => {
-      const row = document.createElement("div");
-      row.style.display = "flex";
-      row.style.alignItems = "center";
-      row.style.justifyContent = "space-between";
-      row.style.padding = "10px";
-      row.style.border = "1px solid #1e2329";
-      row.style.borderRadius = "10px";
-      row.style.cursor = "pointer";
-      row.style.background = "rgba(255,255,255,0.02)";
-
-      row.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:3px;">
-          <div>
-            <strong style="margin-right:8px;">${idx + 1}.</strong>
-            <span>${it.symbol}</span>
-            <span style="margin-left:10px;opacity:0.75;">Score: <b>${it.score}</b></span>
-          </div>
-          <div style="opacity:0.70;font-size:12px;">
-            C:${it.compressScore}  V:${it.vacuumScore}  A:${it.aggressionScore}  S:${it.structureBonus}
-          </div>
-        </div>
-        <div style="white-space:nowrap;">
-          ${badge("compress", it.compress, "rgba(255,180,0,0.9)")}
-          ${badge("vacuum", it.vacuum, "rgba(0,255,150,0.9)")}
-          ${badge("aggr", it.aggression, "rgba(255,90,90,0.9)")}
-        </div>
-      `;
-
-      row.onclick = () => window.switchSymbol(it.symbol);
-      list.appendChild(row);
-    });
-  }
-
-  // ---------- Main compute + refresh ----------
-  function computeAndRenderPotentialTop10() {
-    ensurePotentialPanel();
-    const snap = getCurrentCalibrationSnapshot();
-
-    const scored = C1_UNIVERSE.map(sym => {
-      const m = buildC1MetricsForSymbol(sym, snap);
-      const score = computePotentialScore(m);
-      return { ...m, score };
-    });
-
-    scored.sort((a,b) => b.score - a.score);
-    const top10 = scored.slice(0, 10);
-    renderTop10(top10);
-  }
-
-  // Refresh whenever user changes calibration (sliders/toggles)
-  const refreshHooks = ["vacuumTop","vacuumHeight","compressTop","compressHeight","toggle-vacuum","toggle-compress","toggle-aggression"];
-  refreshHooks.forEach(id => {
-    const node = el(id);
-    if (!node) return;
-    node.addEventListener("input", computeAndRenderPotentialTop10);
-    node.addEventListener("change", computeAndRenderPotentialTop10);
-  });
-
-  // Initial render
-  computeAndRenderPotentialTop10();
-
-  console.log("C1 Potential Scanner initialized");
-          </script><script>
-  // =========================================
-  // B/C2: LOAD REAL BINANCE FUTURES SYMBOLS
-  // (REST ONLY FOR SYMBOL LIST; NO PRICES)
-  // =========================================
-
-  async function loadBinanceFuturesUsdtPerpSymbols() {
-    const url = "https://fapi.binance.com/fapi/v1/exchangeInfo";
-    const res = await fetch(url, { method: "GET" });
-    if (!res.ok) throw new Error("Failed to load exchangeInfo: " + res.status);
-    const data = await res.json();
-
-    const symbols = (data.symbols || [])
-      .filter(s =>
-        s.contractType === "PERPETUAL" &&
-        s.quoteAsset === "USDT" &&
-        s.status === "TRADING"
-      )
-      .map(s => s.symbol);
-
-    // Sort for stable UI
-    symbols.sort((a,b) => a.localeCompare(b));
-    return symbols;
-  }
-
-  (async () => {
-    try {
-      const symbols = await loadBinanceFuturesUsdtPerpSymbols();
-      console.log("Loaded Binance Futures USDT perpetual symbols:", symbols.length);
-
-      // IMPORTANT:
-      // This expects your C1 script created a global C1_UNIVERSE (or we recreate it).
-      // If C1_UNIVERSE is const in your file, we cannot reassign.
-      // So we store into window.UNIVERSE and the C1 compute should read from it next step.
-      window.UNIVERSE = symbols;
-
-      // Soft user feedback in metrics
-      const metrics = document.getElementById("metrics");
-      if (metrics) {
-        const info = document.createElement("div");
-        info.style.marginTop = "10px";
-        info.style.opacity = "0.75";
-        info.style.fontSize = "12px";
-        info.innerHTML = `Binance Futures pāri ielādēti: <b>${symbols.length}</b>`;
-        metrics.appendChild(info);
-      }
-
-      // If your C1 has a function to recompute, call it if exists.
-      if (typeof window.computeAndRenderPotentialTop10 === "function") {
-        window.computeAndRenderPotentialTop10();
-      } else {
-        console.log("Note: computeAndRenderPotentialTop10() not found; Top-10 will refresh on next slider input.");
-      }
-    } catch (e) {
-      console.error(e);
-      const metrics = document.getElementById("metrics");
-      if (metrics) {
-        const err = document.createElement("div");
-        err.style.marginTop = "10px";
-        err.style.color = "rgba(255,90,90,0.9)";
-        err.style.fontSize = "12px";
-        err.innerText = "Neizdevās ielādēt Binance Futures pārus (pārbaudi internetu).";
-        metrics.appendChild(err);
-      }
-    }
-  })();
-          </script><script>
-  // === SAFE UNIVERSE OVERRIDE FOR C1 ===
-  // If Binance Futures symbols are loaded, force C1 to use them
-  if (window.UNIVERSE && Array.isArray(window.UNIVERSE)) {
-    window.getScannerUniverse = function() {
-      return window.UNIVERSE;
-    };
-  } else {
-    window.getScannerUniverse = function() {
-      return typeof C1_UNIVERSE !== "undefined" ? C1_UNIVERSE : [];
-    };
-  }
-          </script><script>
-  // =========================================
-  // A: INSTRUMENT SELECTOR + WATCHLIST
-  // =========================================
-
-  function qs(id){ return document.getElementById(id); }
-
-  // --- Watchlist state ---
-  const WATCHLIST_KEY = "watchlist_symbols_v1";
-  function loadWatchlist(){
-    try { return JSON.parse(localStorage.getItem(WATCHLIST_KEY)) || []; }
-    catch { return []; }
-  }
-  function saveWatchlist(list){
-    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
-  }
-
-  let watchlist = loadWatchlist();
-
-  // --- Ensure UI container ---
-  function ensureInstrumentPanel(){
-    const metrics = qs("metrics");
-    if (!metrics || qs("instrument-panel")) return;
-
-    const panel = document.createElement("div");
-    panel.id = "instrument-panel";
-    panel.style.marginTop = "12px";
-
-    panel.innerHTML = `
-      <hr style="border-color:#1e2329;margin:12px 0;">
-      <strong>Instrumenti</strong>
-
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <select id="instrument-select" style="flex:1;background:#0b0e11;color:#cfd3dc;border:1px solid #1e2329;padding:8px;border-radius:8px;"></select>
-        <button id="add-watch" style="background:#0b0e11;color:#cfd3dc;border:1px solid #1e2329;padding:8px 10px;border-radius:8px;">⭐</button>
-      </div>
-
-      <div style="margin-top:10px;opacity:0.8;font-size:12px;">Watchlist</div>
-      <div id="watchlist" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-    `;
-
-    metrics.appendChild(panel);
-  }
-
-  // --- Populate selector ---
-  function populateSelector(){
-    const sel = qs("instrument-select");
-    if (!sel) return;
-
-    const universe = window.UNIVERSE || [];
-    sel.innerHTML = "";
-
-    universe.forEach(sym=>{
-      const opt = document.createElement("option");
-      opt.value = sym;
-      opt.textContent = sym;
-      sel.appendChild(opt);
-    });
-  }
-
-  // --- Render watchlist ---
-  function renderWatchlist(){
-    const wrap = qs("watchlist");
-    if (!wrap) return;
-    wrap.innerHTML = "";
-
-    watchlist.forEach(sym=>{
-      const btn = document.createElement("button");
-      btn.textContent = sym;
-      btn.style.background = "rgba(255,255,255,0.05)";
-      btn.style.color = "#cfd3dc";
-      btn.style.border = "1px solid #1e2329";
-      btn.style.borderRadius = "10px";
-      btn.style.padding = "6px 10px";
-      btn.style.cursor = "pointer";
-      btn.onclick = ()=> window.switchSymbol(sym);
-      wrap.appendChild(btn);
-    });
-  }
-
-  // --- Wire events ---
-  function wireInstrumentEvents(){
-    const sel = qs("instrument-select");
-    const add = qs("add-watch");
-    if (!sel || !add) return;
-
-    sel.onchange = ()=> window.switchSymbol(sel.value);
-
-    add.onclick = ()=>{
-      const sym = sel.value;
-      if (!sym) return;
-      if (!watchlist.includes(sym)){
-        watchlist.push(sym);
-        saveWatchlist(watchlist);
-        renderWatchlist();
-      }
-    };
-  }
-
-  // --- Init ---
-  function initInstrumentSelector(){
-    ensureInstrumentPanel();
-    populateSelector();
-    renderWatchlist();
-    wireInstrumentEvents();
-  }
-
-  // Run after universe is ready (safe retry)
-  let tries = 0;
-  const iv = setInterval(()=>{
-    if (Array.isArray(window.UNIVERSE) && window.UNIVERSE.length){
-      initInstrumentSelector();
-      clearInterval(iv);
-    }
-    if (++tries > 40) clearInterval(iv);
-  }, 250);
-
-  console.log("Instrument selector + watchlist initialized");
-          </script></body>
+</body>
 </html>
