@@ -2,25 +2,22 @@
 <html lang="lv">
 <head>
   <meta charset="UTF-8" />
-  <title>Super Breakout – BTC 15m</title>
+  <title>Super Breakout LIVE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
   <style>
     body {
       margin: 0;
+      background: #0b0f14;
+      color: #e5e7eb;
       font-family: Arial, sans-serif;
-      background: #0b0e11;
-      color: #fff;
     }
 
     #app {
       display: flex;
-      flex-direction: column;
       height: 100vh;
-    }
-
-    @media (min-width: 768px) {
-      #app {
-        flex-direction: row;
-      }
     }
 
     #chart {
@@ -29,29 +26,92 @@
 
     #metrics {
       flex: 1;
+      border-left: 1px solid #1f2937;
       padding: 12px;
-      border-left: 1px solid #222;
+      font-size: 14px;
     }
 
-    @media (max-width: 767px) {
+    @media (max-width: 768px) {
+      #app {
+        flex-direction: column;
+      }
+
       #metrics {
         border-left: none;
-        border-top: 1px solid #222;
+        border-top: 1px solid #1f2937;
       }
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <div id="chart"></div>
-    <div id="metrics">
-      <h3>Metodikas</h3>
-      <div id="status">Savienojums: …</div>
-      <div id="lastUpdate">Pēdējais atjauninājums: –</div>
-    </div>
-  </div>
 
-  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="./main.js"></script>
+<div id="app">
+  <div id="chart"></div>
+  <div id="metrics">
+    <strong>Metodikas</strong><br><br>
+    Savienojums: LIVE<br>
+    Instruments: BTCUSDT<br>
+    Timeframe: 15m<br>
+    <br>
+    (Indikatori tiks pievienoti pakāpeniski)
+  </div>
+</div>
+
+<script>
+  const chart = LightweightCharts.createChart(document.getElementById('chart'), {
+    layout: {
+      background: { color: '#0b0f14' },
+      textColor: '#e5e7eb',
+    },
+    grid: {
+      vertLines: { color: '#1f2937' },
+      horzLines: { color: '#1f2937' },
+    },
+    timeScale: {
+      timeVisible: true,
+      secondsVisible: false,
+    },
+  });
+
+  const candleSeries = chart.addCandlestickSeries({
+    upColor: '#16a34a',
+    downColor: '#dc2626',
+    borderDownColor: '#dc2626',
+    borderUpColor: '#16a34a',
+    wickDownColor: '#dc2626',
+    wickUpColor: '#16a34a',
+  });
+
+  // Load historical candles
+  fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=500')
+    .then(res => res.json())
+    .then(data => {
+      const candles = data.map(d => ({
+        time: d[0] / 1000,
+        open: parseFloat(d[1]),
+        high: parseFloat(d[2]),
+        low: parseFloat(d[3]),
+        close: parseFloat(d[4]),
+      }));
+      candleSeries.setData(candles);
+    });
+
+  // Live updates via WebSocket
+  const socket = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_15m');
+
+  socket.onmessage = event => {
+    const msg = JSON.parse(event.data);
+    const k = msg.k;
+
+    candleSeries.update({
+      time: k.t / 1000,
+      open: parseFloat(k.o),
+      high: parseFloat(k.h),
+      low: parseFloat(k.l),
+      close: parseFloat(k.c),
+    });
+  };
+</script>
+
 </body>
 </html>
