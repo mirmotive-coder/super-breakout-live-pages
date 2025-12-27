@@ -117,7 +117,26 @@
       <div id="compress-layer"></div>
     </div>
 
-    <div id="metrics">
+    <div id="metrics"><div id="controls" style="margin-bottom:12px;">
+  <strong>Kontrole</strong><br><br>
+
+  <label>
+    <input type="checkbox" id="toggle-vacuum" checked>
+    Vacuum
+  </label><br>
+
+  <label>
+    <input type="checkbox" id="toggle-compress" checked>
+    Compress
+  </label><br>
+
+  <label style="opacity:0.4;">
+    <input type="checkbox" disabled>
+    Aggression (drīzumā)
+  </label>
+
+  <hr style="border:0;border-top:1px solid #1e2329;margin:12px 0;">
+    </div>
       <strong>Metodikas</strong><br><br>
       Savienojums: <b>LIVE</b><br>
       Instruments: <b>BTCUSDT</b><br>
@@ -168,6 +187,18 @@
     };
 
     console.log("System initialized", indicators);
+  </script><script>
+  // === Toggle logic ===
+  const vacuumLayer = document.getElementById("vacuum-layer");
+  const compressLayer = document.getElementById("compress-layer");
+
+  document.getElementById("toggle-vacuum").addEventListener("change", e => {
+    vacuumLayer.style.display = e.target.checked ? "block" : "none";
+  });
+
+  document.getElementById("toggle-compress").addEventListener("change", e => {
+    compressLayer.style.display = e.target.checked ? "block" : "none";
+  });
   </script>
 </body>
 </html>
