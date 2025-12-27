@@ -49,7 +49,34 @@
 
 <body>
   <div id="app">
-    <div id="chart"></div>
+    <div id="chart"<!-- VACUUM ZONE OVERLAY -->
+<div id="vacuum-zone">
+  <span>VACUUM</span>
+</div>
+
+<style>
+#vacuum-zone {
+  position: absolute;
+  top: 120px;              /* vari vēlāk pielāgot */
+  left: 5%;
+  width: 90%;
+  height: 120px;
+  background: rgba(0, 255, 150, 0.12);
+  border: 2px solid rgba(0, 255, 150, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#vacuum-zone span {
+  font-size: 32px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  color: rgba(0, 255, 150, 0.35);
+}
+</style></div>
 
     <div id="metrics">
       <strong>Metodikas</strong><br><br>
