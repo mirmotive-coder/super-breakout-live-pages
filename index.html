@@ -332,5 +332,258 @@
 
   console.log("Aggression overlay initialized");
 </script>
-</body>
+<script>
+  // =========================================
+  // C1: POTENTIAL SCANNER SKELETON (NO API)
+  // =========================================
+  // Goal:
+  // - Define "PotentialScore" model (Compress + Vacuum + Aggression + StructureBonus)
+  // - Render Top-10 panel with state icons + score
+  // - Click row => switch TradingView symbol (reuses existing switchSymbol if present)
+  //
+  // This is NOT live scanning yet. It is the stable scoring backbone.
+  // Next step will feed real Binance Futures symbols + live metrics.
+
+  // ---------- Helpers ----------
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  // Safe DOM getter
+  function el(id) { return document.getElementById(id); }
+
+  // Try to reuse existing switchSymbol() if you already have it somewhere.
+  // If not present, provide a safe local version.
+  if (typeof window.switchSymbol !== "function") {
+    window.switchSymbol = function(symbol) {
+      // Update visible instrument label (best-effort)
+      const metrics = el("metrics");
+      if (metrics && metrics.innerHTML.includes("Instruments:")) {
+        metrics.innerHTML = metrics.innerHTML.replace(/Instruments:\s*<b>.*?<\/b>/, `Instruments: <b>${symbol}</b>`);
+      }
+
+      // Rebuild TradingView widget reliably
+      const chart = el("chart");
+      if (chart) chart.innerHTML = "";
+      if (window.TradingView && window.TradingView.widget) {
+        new TradingView.widget({
+          container_id: "chart",
+          autosize: true,
+          symbol: "BINANCE:" + symbol,
+          interval: "15",
+          timezone: "Etc/UTC",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          hide_top_toolbar: false,
+          hide_legend: true,
+          allow_symbol_change: false,
+          save_image: false
+        });
+      }
+    };
+  }
+
+  // ---------- C1 Data Model ----------
+  // This is the "universe" placeholder for now (we will replace with Binance Futures list in B/C2).
+  const C1_UNIVERSE = [
+    "BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","ADAUSDT","AVAXUSDT","DOGEUSDT",
+    "OPUSDT","ARBUSDT","LINKUSDT","MATICUSDT","LTCUSDT","BCHUSDT","ATOMUSDT","NEARUSDT",
+    "APTUSDT","SUIUSDT","INJUSDT","RNDRUSDT","FTMUSDT","ETCUSDT","1000PEPEUSDT","SHIBUSDT",
+    "SEIUSDT","TIAUSDT","TRXUSDT","FILUSDT","ICPUSDT","UNIUSDT"
+  ];
+
+  // ---------- C1 Scoring Logic (POTENTIAL) ----------
+  // We define a stable 0..100 score.
+  //
+  // Inputs (later will be computed from live data):
+  // - CompressScore: quality of tight range (0..40)
+  // - VacuumScore: distance/clean "empty space" (0..40)
+  // - AggressionScore: presence of anchor zones (0..15)
+  // - StructureBonus: pattern bonus (0..5)
+  //
+  // Total: 0..100
+
+  function computePotentialScore(input) {
+    const compressScore    = clamp(input.compressScore ?? 0, 0, 40);
+    const vacuumScore      = clamp(input.vacuumScore ?? 0, 0, 40);
+    const aggressionScore  = clamp(input.aggressionScore ?? 0, 0, 15);
+    const structureBonus   = clamp(input.structureBonus ?? 0, 0, 5);
+    return Math.round(compressScore + vacuumScore + aggressionScore + structureBonus);
+  }
+
+  // ---------- Temporary Metrics Source (C1) ----------
+  // For NOW:
+  // - We derive a "current calibration snapshot" from your sliders/zones,
+  //   then apply slight deterministic variation per symbol (so Top-10 changes and is testable).
+  //
+  // This keeps the skeleton meaningful, without pretending it is "live".
+
+  function getCurrentCalibrationSnapshot() {
+    // Read your existing sliders if present
+    const vacuumTop = parseFloat(el("vacuumTop")?.value ?? "30");       // 0..80
+    const vacuumH   = parseFloat(el("vacuumHeight")?.value ?? "20");    // 5..40
+    const compTop   = parseFloat(el("compressTop")?.value ?? "55");     // 0..80
+    const compH     = parseFloat(el("compressHeight")?.value ?? "48");  // px (20..80)
+
+    // Read toggles if present
+    const vacuumOn   = !!el("toggle-vacuum")?.checked;
+    const compressOn = !!el("toggle-compress")?.checked;
+    const aggrOn     = !!el("toggle-aggression")?.checked; // from our aggression block
+
+    // Map calibration into rough scoring components (C1 only)
+    // Compress: smaller thickness => tighter => more "compress quality"
+    // Vacuum: larger height => more "space"
+    const compressTightness = clamp((80 - compH) / 60, 0, 1); // compH 20..80 => 1..0
+    const vacuumSpace       = clamp((vacuumH - 5) / 35, 0, 1); // vacuumH 5..40 => 0..1
+
+    const compressScore = compressOn ? Math.round(10 + 30 * compressTightness) : 0; // 0..40
+    const vacuumScore   = vacuumOn ? Math.round(10 + 30 * vacuumSpace) : 0;         // 0..40
+
+    // Aggression anchors: on => base points; later will be computed (buy below, sell above)
+    const aggressionScore = aggrOn ? 10 : 0; // 0..15 placeholder
+
+    // Structure bonus: if vacuum + compress both on => small bonus (placeholder for “2 vacuum” logic later)
+    const structureBonus = (vacuumOn && compressOn) ? 3 : 0; // 0..5 placeholder
+
+    return { vacuumTop, vacuumH, compTop, compH, vacuumOn, compressOn, aggrOn, compressScore, vacuumScore, aggressionScore, structureBonus };
+  }
+
+  // Deterministic symbol variation (stable per symbol, no randomness)
+  function symbolHash(sym) {
+    let h = 0;
+    for (let i=0; i<sym.length; i++) h = (h * 31 + sym.charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  function buildC1MetricsForSymbol(symbol, snapshot) {
+    const h = symbolHash(symbol);
+    // Variation -2..+2 for compress/vacuum, -1..+1 for aggression/bonus
+    const v1 = ((h % 5) - 2);
+    const v2 = (((h / 7) % 5) - 2);
+    const v3 = (((h / 11) % 3) - 1);
+    const v4 = (((h / 13) % 3) - 1);
+
+    const compressScore   = clamp(snapshot.compressScore + v1, 0, 40);
+    const vacuumScore     = clamp(snapshot.vacuumScore + v2, 0, 40);
+    const aggressionScore = clamp(snapshot.aggressionScore + v3, 0, 15);
+    const structureBonus  = clamp(snapshot.structureBonus + v4, 0, 5);
+
+    // State flags (visual icons)
+    const compress = compressScore >= 18; // placeholder threshold
+    const vacuum   = vacuumScore >= 18;   // placeholder threshold
+    const aggression = aggressionScore >= 8;
+
+    return { symbol, compressScore, vacuumScore, aggressionScore, structureBonus, compress, vacuum, aggression };
+  }
+
+  // ---------- UI Rendering (Top-10) ----------
+  function ensurePotentialPanel() {
+    const metrics = el("metrics");
+    if (!metrics) return null;
+
+    // Avoid duplicates
+    if (el("potential-panel")) return el("potential-panel");
+
+    const wrap = document.createElement("div");
+    wrap.id = "potential-panel";
+    wrap.style.marginTop = "12px";
+
+    wrap.innerHTML = `
+      <hr style="border-color:#1e2329;margin:12px 0;">
+      <strong>TOP 10 (Potenciāls)</strong>
+      <div style="opacity:0.65;margin:6px 0 10px 0;font-size:12px;">
+        C1 skelets: score = compress + vacuum + aggression + struktūra (bez live datiem).
+      </div>
+      <div id="top10-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div style="opacity:0.6;margin-top:10px;font-size:12px;">
+        Klikšķini uz pāra, lai pārslēgtu grafiku.
+      </div>
+    `;
+
+    metrics.appendChild(wrap);
+    return wrap;
+  }
+
+  function badge(text, active, color) {
+    const s = [
+      "display:inline-block",
+      "padding:2px 8px",
+      "border-radius:10px",
+      "font-size:11px",
+      "border:1px solid #1e2329",
+      "margin-left:6px",
+      active ? "opacity:1" : "opacity:0.22",
+      `color:${color}`
+    ].join(";");
+    return `<span style="${s}">${text}</span>`;
+  }
+
+  function renderTop10(items) {
+    const list = el("top10-list");
+    if (!list) return;
+    list.innerHTML = "";
+
+    items.forEach((it, idx) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.justifyContent = "space-between";
+      row.style.padding = "10px";
+      row.style.border = "1px solid #1e2329";
+      row.style.borderRadius = "10px";
+      row.style.cursor = "pointer";
+      row.style.background = "rgba(255,255,255,0.02)";
+
+      row.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <div>
+            <strong style="margin-right:8px;">${idx + 1}.</strong>
+            <span>${it.symbol}</span>
+            <span style="margin-left:10px;opacity:0.75;">Score: <b>${it.score}</b></span>
+          </div>
+          <div style="opacity:0.70;font-size:12px;">
+            C:${it.compressScore}  V:${it.vacuumScore}  A:${it.aggressionScore}  S:${it.structureBonus}
+          </div>
+        </div>
+        <div style="white-space:nowrap;">
+          ${badge("compress", it.compress, "rgba(255,180,0,0.9)")}
+          ${badge("vacuum", it.vacuum, "rgba(0,255,150,0.9)")}
+          ${badge("aggr", it.aggression, "rgba(255,90,90,0.9)")}
+        </div>
+      `;
+
+      row.onclick = () => window.switchSymbol(it.symbol);
+      list.appendChild(row);
+    });
+  }
+
+  // ---------- Main compute + refresh ----------
+  function computeAndRenderPotentialTop10() {
+    ensurePotentialPanel();
+    const snap = getCurrentCalibrationSnapshot();
+
+    const scored = C1_UNIVERSE.map(sym => {
+      const m = buildC1MetricsForSymbol(sym, snap);
+      const score = computePotentialScore(m);
+      return { ...m, score };
+    });
+
+    scored.sort((a,b) => b.score - a.score);
+    const top10 = scored.slice(0, 10);
+    renderTop10(top10);
+  }
+
+  // Refresh whenever user changes calibration (sliders/toggles)
+  const refreshHooks = ["vacuumTop","vacuumHeight","compressTop","compressHeight","toggle-vacuum","toggle-compress","toggle-aggression"];
+  refreshHooks.forEach(id => {
+    const node = el(id);
+    if (!node) return;
+    node.addEventListener("input", computeAndRenderPotentialTop10);
+    node.addEventListener("change", computeAndRenderPotentialTop10);
+  });
+
+  // Initial render
+  computeAndRenderPotentialTop10();
+
+  console.log("C1 Potential Scanner initialized");
+          </script></body>
 </html>
