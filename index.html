@@ -251,6 +251,56 @@
 
   update();
 </script>
+<!-- ========================= -->
+<!-- BLOCK: BINANCE FUTURES UNIVERSE -->
+<!-- PURPOSE: Load all USDT-M perpetual symbols -->
+<!-- ========================= -->
+<script>
+/**
+ * BINANCE FUTURES UNIVERSE
+ * Šis bloks ielādē visus USDT-M perpetual instrumentus
+ * un sagatavo tos atlasei (Top-10 nākamajos soļos)
+ */
 
+const BINANCE_FUTURES = {
+  loaded: false,
+  symbols: [],
+  lastUpdate: null
+};
+
+async function loadBinanceFuturesUniverse() {
+  try {
+    const res = await fetch("https://fapi.binance.com/fapi/v1/exchangeInfo");
+    const data = await res.json();
+
+    BINANCE_FUTURES.symbols = data.symbols
+      .filter(s =>
+        s.contractType === "PERPETUAL" &&
+        s.quoteAsset === "USDT" &&
+        s.status === "TRADING"
+      )
+      .map(s => s.symbol);
+
+    BINANCE_FUTURES.loaded = true;
+    BINANCE_FUTURES.lastUpdate = new Date().toISOString();
+
+    console.log(
+      "[UNIVERSE] Binance Futures loaded:",
+      BINANCE_FUTURES.symbols.length,
+      "symbols"
+    );
+    console.log(BINANCE_FUTURES.symbols);
+
+  } catch (err) {
+    console.error("[UNIVERSE] Failed to load Binance Futures", err);
+  }
+}
+
+// AUTO LOAD
+loadBinanceFuturesUniverse();
+</script>
+<!-- ========================= -->
+<!-- END BLOCK: BINANCE FUTURES UNIVERSE -->
+<!-- ========================= -->
 </body>
 </html>
