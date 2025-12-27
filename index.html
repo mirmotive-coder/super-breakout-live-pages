@@ -5,7 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Super Breakout LIVE</title>
 
-  <style>
+  #chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#vacuum-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* TESTA vakuuma zona */
+.vacuum-zone {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 255, 0, 0.12);
+  border-top: 1px solid rgba(0, 255, 0, 0.4);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.4);
+  font-size: 32px;
+  color: rgba(0, 255, 0, 0.25);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}<style>
     body {
       margin: 0;
       background: #0b0e11;
@@ -49,7 +78,12 @@
 
 <body>
   <div id="app">
-    <div id="chart"<!-- VACUUM ZONE OVERLAY -->
+    <div id="chart-wrapper">
+  <div id="chart"></div>
+
+  <!-- VACUUM OVERLAY -->
+  <div id="vacuum-layer"></div>
+</div>
 <div id="vacuum-zone">
   <span>VACUUM</span>
 </div>
@@ -103,7 +137,18 @@
       hide_legend: true,
       allow_symbol_change: false,
       save_image: false
-    });
+    <script>
+  const vacuum = document.createElement("div");
+  vacuum.className = "vacuum-zone";
+
+  // TESTA parametri (vēlāk būs no algoritma)
+  vacuum.style.top = "35%";
+  vacuum.style.height = "18%";
+
+  vacuum.innerText = "VACUUM";
+
+  document.getElementById("vacuum-layer").appendChild(vacuum);
+</script>});
   </script>
 </body>
 </html>
