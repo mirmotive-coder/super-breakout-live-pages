@@ -5,36 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Super Breakout LIVE</title>
 
-  #chart-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-#vacuum-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-/* TESTA vakuuma zona */
-.vacuum-zone {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  background: rgba(0, 255, 0, 0.12);
-  border-top: 1px solid rgba(0, 255, 0, 0.4);
-  border-bottom: 1px solid rgba(0, 255, 0, 0.4);
-  font-size: 32px;
-  color: rgba(0, 255, 0, 0.25);
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}<style>
+  <style>
     body {
       margin: 0;
       background: #0b0e11;
@@ -48,9 +19,39 @@
       height: 100vh;
     }
 
-    #chart {
+    #chart-wrapper {
+      position: relative;
       flex: 1;
       min-height: 60vh;
+    }
+
+    #chart {
+      width: 100%;
+      height: 100%;
+    }
+
+    #vacuum-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .vacuum-zone {
+      position: absolute;
+      left: 5%;
+      width: 90%;
+      height: 120px;
+      top: 35%;
+      background: rgba(0, 255, 150, 0.12);
+      border: 2px solid rgba(0, 255, 150, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      color: rgba(0, 255, 150, 0.35);
     }
 
     #metrics {
@@ -64,7 +65,7 @@
       #app {
         flex-direction: row;
       }
-      #chart {
+      #chart-wrapper {
         flex: 3;
       }
       #metrics {
@@ -78,39 +79,11 @@
 
 <body>
   <div id="app">
+
     <div id="chart-wrapper">
-  <div id="chart"></div>
-
-  <!-- VACUUM OVERLAY -->
-  <div id="vacuum-layer"></div>
-</div>
-<div id="vacuum-zone">
-  <span>VACUUM</span>
-</div>
-
-<style>
-#vacuum-zone {
-  position: absolute;
-  top: 120px;              /* vari vēlāk pielāgot */
-  left: 5%;
-  width: 90%;
-  height: 120px;
-  background: rgba(0, 255, 150, 0.12);
-  border: 2px solid rgba(0, 255, 150, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 5;
-}
-
-#vacuum-zone span {
-  font-size: 32px;
-  font-weight: bold;
-  letter-spacing: 4px;
-  color: rgba(0, 255, 150, 0.35);
-}
-</style></div>
+      <div id="chart"></div>
+      <div id="vacuum-layer"></div>
+    </div>
 
     <div id="metrics">
       <strong>Metodikas</strong><br><br>
@@ -119,6 +92,7 @@
       Timeframe: <b>15m</b><br><br>
       (Indikatori tiks pievienoti pakāpeniski)
     </div>
+
   </div>
 
   <!-- TradingView -->
@@ -137,51 +111,24 @@
       hide_legend: true,
       allow_symbol_change: false,
       save_image: false
-    <script>
-  const vacuum = document.createElement("div");
-  vacuum.className = "vacuum-zone";
+    });
 
-  // TESTA parametri (vēlāk būs no algoritma)
-  vacuum.style.top = "35%";
-  vacuum.style.height = "18%";
+    // TESTA vakuuma zona
+    const vacuum = document.createElement("div");
+    vacuum.className = "vacuum-zone";
+    vacuum.innerText = "VACUUM";
+    document.getElementById("vacuum-layer").appendChild(vacuum);
+  </script>
 
-  vacuum.innerText = "VACUUM";
+  <script>
+    const indicators = {
+      compress: { enabled: true },
+      vacuum: { enabled: true, zones: [] },
+      aggression: { enabled: false },
+      breakout: { enabled: true }
+    };
 
-  document.getElementById("vacuum-layer").appendChild(vacuum);
-</script>});
+    console.log("Indicator system initialized", indicators);
   </script>
 </body>
 </html>
-<script>
-// === Indicator system scaffold (no calculations yet) ===
-
-const indicators = {
-  compress: {
-    enabled: true,
-    active: false
-  },
-  vacuum: {
-    enabled: false,
-    zones: []
-  },
-  aggression: {
-    enabled: false,
-    buyZones: [],
-    sellZones: []
-  },
-  breakout: {
-    enabled: true,
-    strength: 0,
-    probability: 0
-  }
-};
-
-// System state (future use)
-const systemState = {
-  instrument: "BTCUSDT",
-  timeframe: "15m",
-  mode: "LIVE"
-};
-
-console.log("Indicator system initialized", indicators, systemState);
-</script>
