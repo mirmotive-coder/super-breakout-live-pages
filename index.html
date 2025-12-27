@@ -30,6 +30,7 @@
       height: 100%;
     }
 
+    /* ===== VACUUM ===== */
     #vacuum-layer {
       position: absolute;
       inset: 0;
@@ -54,6 +55,35 @@
       color: rgba(0, 255, 150, 0.35);
     }
 
+    /* ===== COMPRESS ===== */
+    #compress-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+    }
+
+    .compress-zone {
+      position: absolute;
+      left: 15%;
+      width: 70%;
+      height: 48px;
+      top: 55%;
+      background: rgba(255, 180, 0, 0.18);
+      border: 2px solid rgba(255, 180, 0, 0.7);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .compress-zone span {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: rgba(255, 200, 80, 0.6);
+    }
+
     #metrics {
       padding: 12px;
       border-top: 1px solid #1e2329;
@@ -62,12 +92,8 @@
     }
 
     @media (min-width: 768px) {
-      #app {
-        flex-direction: row;
-      }
-      #chart-wrapper {
-        flex: 3;
-      }
+      #app { flex-direction: row; }
+      #chart-wrapper { flex: 3; }
       #metrics {
         flex: 1;
         border-top: none;
@@ -82,7 +108,10 @@
 
     <div id="chart-wrapper">
       <div id="chart"></div>
+
+      <!-- OVERLAYS -->
       <div id="vacuum-layer"></div>
+      <div id="compress-layer"></div>
     </div>
 
     <div id="metrics">
@@ -113,22 +142,17 @@
       save_image: false
     });
 
-    // TESTA vakuuma zona
+    // === TESTA VACUUM ===
     const vacuum = document.createElement("div");
     vacuum.className = "vacuum-zone";
     vacuum.innerText = "VACUUM";
     document.getElementById("vacuum-layer").appendChild(vacuum);
-  </script>
 
-  <script>
-    const indicators = {
-      compress: { enabled: true },
-      vacuum: { enabled: true, zones: [] },
-      aggression: { enabled: false },
-      breakout: { enabled: true }
-    };
-
-    console.log("Indicator system initialized", indicators);
+    // === TESTA COMPRESS ===
+    const compress = document.createElement("div");
+    compress.className = "compress-zone";
+    compress.innerHTML = "<span>COMPRESS</span>";
+    document.getElementById("compress-layer").appendChild(compress);
   </script>
 </body>
 </html>
