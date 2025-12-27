@@ -218,6 +218,119 @@
     compressZone.style.height = e.target.value + "px";
   };
 </script>
+<script>
+  // ================================
+  // AGGRESSION OVERLAY (VISUAL ONLY)
+  // ================================
 
+  // 1) Ensure aggression layer exists above chart
+  function ensureAggressionLayer() {
+    let layer = document.getElementById("aggression-layer");
+    if (!layer) {
+      const wrapper = document.getElementById("chart-wrapper");
+      layer = document.createElement("div");
+      layer.id = "aggression-layer";
+      layer.style.position = "absolute";
+      layer.style.inset = "0";
+      layer.style.pointerEvents = "none";
+      layer.style.zIndex = "7"; // above vacuum(5) + compress(6)
+      wrapper.appendChild(layer);
+    }
+    return layer;
+  }
+
+  // 2) Create a visual aggression zone
+  function createAggressionZone({ type, topPct, heightPct, label }) {
+    const zone = document.createElement("div");
+    zone.className = "aggression-zone";
+
+    zone.style.position = "absolute";
+    zone.style.left = "5%";
+    zone.style.width = "90%";
+    zone.style.top = `${topPct}%`;
+    zone.style.height = `${heightPct}%`;
+    zone.style.display = "flex";
+    zone.style.alignItems = "center";
+    zone.style.justifyContent = "center";
+    zone.style.borderRadius = "10px";
+    zone.style.border = "1px solid rgba(255,255,255,0.10)";
+
+    // Color logic
+    const isBuy = type === "BUY";
+    zone.style.background = isBuy
+      ? "rgba(0, 200, 120, 0.12)"
+      : "rgba(255, 70, 70, 0.12)";
+
+    zone.style.outline = isBuy
+      ? "2px solid rgba(0, 255, 150, 0.35)"
+      : "2px solid rgba(255, 90, 90, 0.35)";
+
+    zone.style.color = isBuy
+      ? "rgba(0, 255, 150, 0.35)"
+      : "rgba(255, 90, 90, 0.35)";
+
+    zone.style.fontWeight = "bold";
+    zone.style.letterSpacing = "3px";
+    zone.style.fontSize = "18px";
+    zone.innerText = label || (isBuy ? "BUY AGGRESSION" : "SELL AGGRESSION");
+
+    return zone;
+  }
+
+  // 3) Add demo aggression zones (later replaced by algorithm)
+  const aggressionLayer = ensureAggressionLayer();
+
+  const demoAggressions = [
+    // Example: below compress = "fuel wall"
+    { type: "BUY",  topPct: 70, heightPct: 6, label: "BUY AGGRESSION" },
+    // Example: above price = sell pressure / distribution zone
+    { type: "SELL", topPct: 18, heightPct: 6, label: "SELL AGGRESSION" }
+  ];
+
+  // Clean and render
+  function renderAggressions() {
+    aggressionLayer.innerHTML = "";
+    demoAggressions.forEach(cfg => aggressionLayer.appendChild(createAggressionZone(cfg)));
+  }
+  renderAggressions();
+
+  // 4) Add toggle into metrics panel (if not already present)
+  function ensureAggressionToggle() {
+    const metrics = document.getElementById("metrics");
+    if (!metrics) return;
+
+    // Avoid duplicates
+    if (document.getElementById("toggle-aggression")) return;
+
+    // Insert under existing toggles if possible
+    const hr = metrics.querySelector("hr");
+    const container = document.createElement("div");
+    container.style.marginBottom = "8px";
+
+    container.innerHTML = `
+      <label>
+        <input type="checkbox" id="toggle-aggression" checked>
+        Aggression
+      </label>
+    `;
+
+    // Place before first <hr> (keeps layout tidy)
+    if (hr) {
+      metrics.insertBefore(container, hr);
+    } else {
+      metrics.appendChild(container);
+    }
+
+    // Toggle behavior
+    document.getElementById("toggle-aggression").onchange = e => {
+      aggressionLayer.style.display = e.target.checked ? "block" : "none";
+    };
+  }
+
+  // Run toggle injection after DOM is ready
+  ensureAggressionToggle();
+
+  console.log("Aggression overlay initialized");
+</script>
 </body>
 </html>
