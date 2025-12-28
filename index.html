@@ -60,7 +60,7 @@
       height: 100%;
     }
 
-    /* Overlay layers (each is full-screen over chart) */
+    /* Overlay layers */
     .overlay-layer {
       position: absolute;
       inset: 0;
@@ -107,7 +107,7 @@
       color: var(--compress-text);
     }
 
-    /* Aggression zones (static placeholder, will be driven by data later) */
+    /* Aggression placeholders */
     .aggr-zone {
       position: absolute;
       left: 3%;
@@ -135,11 +135,13 @@
       color: var(--buy-text);
     }
 
-    /* Bottom panel */
+    /* Panel */
     #panel {
       border-top: 1px solid var(--line);
       background: var(--panel);
       padding: 12px;
+      overflow: auto;
+      max-height: 46vh;
     }
 
     h3 {
@@ -147,20 +149,13 @@
       font-size: 16px;
     }
 
-    .row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .muted { color: var(--muted); }
-
     .kv {
       line-height: 1.35;
       font-size: 14px;
       margin-bottom: 10px;
     }
+
+    .muted { color: var(--muted); }
 
     .controls {
       padding: 10px 0 4px;
@@ -208,6 +203,89 @@
       font-size: 13px;
       line-height: 1.35;
     }
+
+    /* Universe + watch */
+    .tools {
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tool-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input, .select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: #0b0e11;
+      color: var(--text);
+      border-radius: 10px;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .btn {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: #0b0e11;
+      color: var(--text);
+      border-radius: 10px;
+      font-size: 15px;
+    }
+
+    .btn.primary{
+      border-color: rgba(47, 129, 247, 0.6);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: #0b0e11;
+    }
+
+    .list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .item b { font-weight: 700; }
+    .pill {
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .ok { color: rgba(0,255,150,0.8); }
+    .bad { color: rgba(255,60,60,0.8); }
   </style>
 </head>
 
@@ -228,8 +306,42 @@
         Savienojums: <b id="conn">LOADING</b><br>
         Instruments: <b id="sym">BTCUSDT</b><br>
         Timeframe: <b id="tf">15m</b><br>
-        BTC cena: <b id="last">-</b><br>
-        Latency: <b id="lat">-</b>
+        Cena: <b id="last">-</b><br>
+        Latency: <b id="lat">-</b><br>
+        Universe: <b id="universeCount">-</b> (Binance Futures USDT Perpetual)
+      </div>
+
+      <div class="tools">
+        <h3>Paaugstināta uzraudzība</h3>
+
+        <div class="tool-row">
+          <input id="symbolInput" class="input" placeholder="Ieraksti monētu, piem: BTCUSDT / ETHUSDT / SOLUSDT" />
+          <button id="goBtn" class="btn primary">Atvērt</button>
+        </div>
+
+        <div class="tool-row">
+          <select id="tfSelect" class="select">
+            <option value="1m">1m</option>
+            <option value="5m">5m</option>
+            <option value="15m" selected>15m</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+          </select>
+          <button id="refreshTopBtn" class="btn">Top-10 refresh</button>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div><b>Top-10 (auto atlase)</b> <span class="pill" id="topMeta">loading…</span></div>
+            <div class="list" id="topList"></div>
+          </div>
+
+          <div class="card">
+            <div><b>Watch (klikšķināms)</b> <span class="pill" id="watchMeta">0</span></div>
+            <div class="list" id="watchList"></div>
+            <div style="margin-top:10px;" class="muted">Padoms: atver Top-10, klikšķini — ieliks watch un pārslēgs chart.</div>
+          </div>
+        </div>
       </div>
 
       <div class="controls">
@@ -263,8 +375,8 @@
         </div>
 
         <div class="note">
-          Šobrīd te ir “forma” (vizuālais karkass) + iekšējais datu modelis.
-          Nākamais solis būs Binance datu plūsma un top-10 atlase pēc mūsu nosacījumiem.
+          Šajā solī: Binance Futures monētu saraksts + Top-10 atlase + Watch/klikšķis + LIVE cena/latency.
+          Nākamais solis: “C1 scoring” pēc tavām metodikām (vacuum/compress/aggression) un top-10 no indikātoriem, nevis no 24h statistikas.
         </div>
       </div>
     </div>
@@ -275,6 +387,12 @@
 
   <script>
     /******************************************************************
+     * 0) ENDPOINTS
+     ******************************************************************/
+    const BINANCE_FAPI = "https://fapi.binance.com";
+    const BINANCE_WS = "wss://fstream.binance.com/ws";
+
+    /******************************************************************
      * 1) UI ELEMENTS
      ******************************************************************/
     const elConn = document.getElementById("conn");
@@ -282,6 +400,7 @@
     const elTf   = document.getElementById("tf");
     const elLast = document.getElementById("last");
     const elLat  = document.getElementById("lat");
+    const elUniverseCount = document.getElementById("universeCount");
 
     const vacuumLayer = document.getElementById("vacuum-layer");
     const compressLayer = document.getElementById("compress-layer");
@@ -301,8 +420,19 @@
     const cmpTopVal = document.getElementById("cmpTopVal");
     const cmpHVal = document.getElementById("cmpHVal");
 
+    const symbolInput = document.getElementById("symbolInput");
+    const goBtn = document.getElementById("goBtn");
+    const tfSelect = document.getElementById("tfSelect");
+
+    const topList = document.getElementById("topList");
+    const topMeta = document.getElementById("topMeta");
+    const refreshTopBtn = document.getElementById("refreshTopBtn");
+
+    const watchList = document.getElementById("watchList");
+    const watchMeta = document.getElementById("watchMeta");
+
     /******************************************************************
-     * 2) VISUAL OVERLAYS (placeholders)
+     * 2) OVERLAYS (placeholders)
      ******************************************************************/
     const vacuumBox = document.createElement("div");
     vacuumBox.className = "vacuum-zone";
@@ -343,7 +473,6 @@
       compressBox.style.top = cTop + "%";
       compressBox.style.height = cH + "px";
     }
-
     [vacTop, vacH, cmpTop, cmpH].forEach(inp => inp.addEventListener("input", applyCalibration));
     applyCalibration();
 
@@ -356,8 +485,7 @@
     applyToggles();
 
     /******************************************************************
-     * 3) INTERNAL DATA MODEL (NO BINANCE YET)
-     *    Candle buffer + simple update hooks.
+     * 3) STATE
      ******************************************************************/
     const state = {
       instrument: "BTCUSDT",
@@ -365,70 +493,303 @@
       mode: "LIVE",
       lastPrice: null,
       latencyMs: null,
-      candles: [],           // { t, o, h, l, c, v }
-      maxCandles: 600
+
+      universe: [],     // ["BTCUSDT", ...] (USDT perpetual)
+      watch: [],        // clickable list
+      top10: [],        // computed list
+
+      ws: null,
+      tvWidget: null,
+      tvContainerId: "chart",
     };
 
-    function pushCandle(candle) {
-      state.candles.push(candle);
-      if (state.candles.length > state.maxCandles) state.candles.shift();
+    function tfToBinanceKline(tf){
+      // Binance klines accept: 1m 5m 15m 1h 4h etc.
+      return tf;
     }
 
-    function updateLast(price, latencyMs) {
+    function formatNum(x){
+      if (x == null || Number.isNaN(x)) return "-";
+      const n = Number(x);
+      if (!Number.isFinite(n)) return "-";
+      if (n >= 1000) return n.toFixed(2);
+      return n.toFixed(4);
+    }
+
+    function updateHeader(price, latencyMs){
       state.lastPrice = price;
       state.latencyMs = latencyMs;
 
+      elConn.textContent = "CONNECTED";
       elSym.textContent = state.instrument;
       elTf.textContent = state.timeframe;
-      elLast.textContent = (price == null) ? "-" : Number(price).toFixed(2);
-      elLat.textContent = (latencyMs == null) ? "-" : (latencyMs + "ms");
+      elLast.textContent = price == null ? "-" : formatNum(price);
+      elLat.textContent = latencyMs == null ? "-" : (latencyMs + "ms");
     }
 
-    // Temporary: simulate "LIVE" so UI works even before Binance is connected
-    function bootstrapFakeData() {
-      elConn.textContent = "CONNECTED";
-      const base = 87500;
+    function setUniverse(list){
+      state.universe = list;
+      elUniverseCount.textContent = String(list.length);
+    }
 
-      // seed candles
-      const now = Date.now();
-      for (let i = 40; i >= 1; i--) {
-        const t = now - i * 60_000 * 15; // 15m steps
-        const o = base + (Math.random() - 0.5) * 400;
-        const c = o + (Math.random() - 0.5) * 250;
-        const h = Math.max(o, c) + Math.random() * 120;
-        const l = Math.min(o, c) - Math.random() * 120;
-        const v = 100 + Math.random() * 900;
-        pushCandle({ t, o, h, l, c, v });
-      }
-
-      // fake ticks
-      setInterval(() => {
-        const p = base + (Math.random() - 0.5) * 600;
-        updateLast(p, 0);
-      }, 1000);
+    function setWatch(list){
+      state.watch = list;
+      watchMeta.textContent = String(list.length);
+      renderWatch();
     }
 
     /******************************************************************
-     * 4) TRADINGVIEW WIDGET
+     * 4) TRADINGVIEW (recreate on symbol/timeframe change)
      ******************************************************************/
-    new TradingView.widget({
-      container_id: "chart",
-      autosize: true,
-      symbol: "BINANCE:BTCUSDT",
-      interval: "15",
-      timezone: "Etc/UTC",
-      theme: "dark",
-      style: "1",
-      locale: "en",
-      hide_top_toolbar: false,
-      hide_legend: true,
-      allow_symbol_change: true,
-      save_image: false
+    function loadChart(symbol, timeframe){
+      const tvSymbol = "BINANCE:" + symbol;
+      const interval = (timeframe === "1h") ? "60" :
+                       (timeframe === "4h") ? "240" :
+                       timeframe.replace("m","");
+
+      // Clear container
+      const el = document.getElementById(state.tvContainerId);
+      el.innerHTML = "";
+
+      state.tvWidget = new TradingView.widget({
+        container_id: state.tvContainerId,
+        autosize: true,
+        symbol: tvSymbol,
+        interval: interval,
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        hide_top_toolbar: false,
+        hide_legend: true,
+        allow_symbol_change: true,
+        save_image: false
+      });
+    }
+
+    /******************************************************************
+     * 5) BINANCE: Universe (USDT Perpetual)
+     ******************************************************************/
+    async function fetchUniverse(){
+      const r = await fetch(`${BINANCE_FAPI}/fapi/v1/exchangeInfo`);
+      if (!r.ok) throw new Error("exchangeInfo failed: " + r.status);
+      const data = await r.json();
+
+      const list = (data.symbols || [])
+        .filter(s =>
+          s.contractType === "PERPETUAL" &&
+          s.quoteAsset === "USDT" &&
+          s.status === "TRADING"
+        )
+        .map(s => s.symbol)
+        .sort((a,b) => a.localeCompare(b));
+
+      setUniverse(list);
+    }
+
+    /******************************************************************
+     * 6) BINANCE: Top-10 (fast baseline using 24h stats)
+     *    Later we replace scoring with your C1/C2 indicators.
+     ******************************************************************/
+    function score24h(item){
+      // item: { symbol, quoteVolume, priceChangePercent }
+      const vol = Number(item.quoteVolume || 0);
+      const chg = Math.abs(Number(item.priceChangePercent || 0));
+      const volFactor = Math.log10(Math.max(1, vol));
+      return chg * volFactor; // simple baseline
+    }
+
+    async function refreshTop10(){
+      topMeta.textContent = "loading…";
+      topList.innerHTML = "";
+
+      const r = await fetch(`${BINANCE_FAPI}/fapi/v1/ticker/24hr`);
+      if (!r.ok) throw new Error("ticker/24hr failed: " + r.status);
+      const all = await r.json();
+
+      // keep only our universe
+      const universeSet = new Set(state.universe);
+      const filtered = all.filter(x => universeSet.has(x.symbol));
+
+      const scored = filtered
+        .map(x => ({
+          symbol: x.symbol,
+          quoteVolume: x.quoteVolume,
+          priceChangePercent: x.priceChangePercent,
+          score: score24h(x)
+        }))
+        .sort((a,b) => b.score - a.score)
+        .slice(0, 10);
+
+      state.top10 = scored;
+      renderTop10();
+      topMeta.textContent = "ok";
+    }
+
+    function renderTop10(){
+      topList.innerHTML = "";
+      const items = state.top10 || [];
+      for (const x of items){
+        const row = document.createElement("div");
+        row.className = "item";
+        row.innerHTML = `
+          <div>
+            <b>${x.symbol}</b>
+            <span class="pill ${Number(x.priceChangePercent) >= 0 ? "ok":"bad"}" style="margin-left:8px;">
+              ${Number(x.priceChangePercent).toFixed(2)}%
+            </span>
+          </div>
+          <div class="pill">score ${x.score.toFixed(2)}</div>
+        `;
+        row.addEventListener("click", () => {
+          addToWatch(x.symbol);
+          setInstrument(x.symbol);
+        });
+        topList.appendChild(row);
+      }
+    }
+
+    function renderWatch(){
+      watchList.innerHTML = "";
+      for (const sym of state.watch){
+        const row = document.createElement("div");
+        row.className = "item";
+        row.innerHTML = `
+          <div><b>${sym}</b></div>
+          <div class="pill">open</div>
+        `;
+        row.addEventListener("click", () => setInstrument(sym));
+        watchList.appendChild(row);
+      }
+    }
+
+    function addToWatch(sym){
+      sym = String(sym || "").toUpperCase().trim();
+      if (!sym) return;
+      if (!state.watch.includes(sym)){
+        setWatch([sym, ...state.watch].slice(0, 30));
+      }
+    }
+
+    /******************************************************************
+     * 7) BINANCE: Live price via WebSocket (miniTicker)
+     ******************************************************************/
+    function closeWS(){
+      try { if (state.ws) state.ws.close(); } catch {}
+      state.ws = null;
+    }
+
+    function openWS(symbol){
+      closeWS();
+      const stream = symbol.toLowerCase() + "@miniTicker";
+      const url = `${BINANCE_WS}/${stream}`;
+
+      const ws = new WebSocket(url);
+      state.ws = ws;
+
+      ws.onopen = () => {
+        elConn.textContent = "CONNECTED";
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          // miniTicker: E=eventTime, c=close/last
+          const eventTime = Number(msg.E);
+          const price = Number(msg.c);
+          const lat = Number.isFinite(eventTime) ? Math.max(0, Date.now() - eventTime) : null;
+          updateHeader(price, lat);
+        } catch {}
+      };
+
+      ws.onerror = () => {
+        elConn.textContent = "ERROR";
+      };
+
+      ws.onclose = () => {
+        elConn.textContent = "DISCONNECTED";
+      };
+    }
+
+    /******************************************************************
+     * 8) CHANGE INSTRUMENT / TIMEFRAME
+     ******************************************************************/
+    function setInstrument(sym){
+      sym = String(sym || "").toUpperCase().trim();
+      if (!sym) return;
+
+      // normalize: allow typing "BTC" => BTCUSDT
+      if (!sym.endsWith("USDT")) sym = sym + "USDT";
+
+      // optional: validate if universe known
+      if (state.universe.length && !state.universe.includes(sym)){
+        alert("Šādas monētas nav Binance Futures USDT Perpetual sarakstā: " + sym);
+        return;
+      }
+
+      state.instrument = sym;
+      symbolInput.value = sym;
+
+      // Refresh chart + ws
+      loadChart(state.instrument, state.timeframe);
+      openWS(state.instrument);
+      updateHeader(state.lastPrice, state.latencyMs);
+    }
+
+    function setTimeframe(tf){
+      state.timeframe = tf;
+      loadChart(state.instrument, state.timeframe);
+      // WS is same (price), no need to reopen
+      elTf.textContent = state.timeframe;
+    }
+
+    /******************************************************************
+     * 9) UI EVENTS
+     ******************************************************************/
+    goBtn.addEventListener("click", () => {
+      addToWatch(symbolInput.value);
+      setInstrument(symbolInput.value);
     });
 
-    bootstrapFakeData();
+    symbolInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        addToWatch(symbolInput.value);
+        setInstrument(symbolInput.value);
+      }
+    });
 
-    console.log("Initialized: UI + overlays + internal data model", state);
+    tfSelect.addEventListener("change", () => setTimeframe(tfSelect.value));
+    refreshTopBtn.addEventListener("click", () => refreshTop10());
+
+    /******************************************************************
+     * 10) BOOT
+     ******************************************************************/
+    async function boot(){
+      try {
+        elConn.textContent = "LOADING…";
+        await fetchUniverse();
+
+        // default watch set
+        setWatch(["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT"]);
+
+        // initial chart + ws
+        loadChart(state.instrument, state.timeframe);
+        openWS(state.instrument);
+
+        // top10 refresh now + every 60s
+        await refreshTop10();
+        setInterval(() => refreshTop10().catch(() => {}), 60_000);
+
+        elConn.textContent = "CONNECTED";
+      } catch (err){
+        console.error(err);
+        elConn.textContent = "ERROR";
+        topMeta.textContent = "error";
+        alert("Kļūda: " + (err?.message || err));
+      }
+    }
+
+    boot();
   </script>
 </body>
 </html>
