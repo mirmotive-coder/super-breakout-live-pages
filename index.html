@@ -2,1029 +2,703 @@
 <html lang="lv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Super Breakout LIVE — LOCKED SCORE v1 (15m)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Super Breakout LIVE — Screener (Compress/Vacuum/Aggression)</title>
 
-  <!-- Lightweight Charts (TradingView open-source render engine) -->
+  <!-- Lightweight Charts (TradingView open-source charting library) -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 
   <style>
     :root{
-      --bg:#0b0e11;
-      --panel:#0b0e11;
-      --card:#0f141a;
-      --line:#1e2329;
-      --text:#cfd3dc;
-      --muted:#9aa4b2;
+      --bg:#0b0e11; --panel:#0f141b; --line:#1e2329; --text:#cfd3dc; --muted:#8892a6;
+      --green:rgba(0,255,150,.18); --greenB:rgba(0,255,150,.65);
+      --amber:rgba(255,180,0,.18); --amberB:rgba(255,180,0,.75);
+      --red:rgba(255,80,80,.18); --redB:rgba(255,80,80,.75);
+      --chip:#141b24;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
+    #app{height:100vh;display:flex;flex-direction:column}
+    header{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);
+    }
+    header .title{font-weight:700}
+    header .pill{
+      padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--chip);font-size:12px;color:var(--muted)
+    }
+    header .status{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.ok{background:#2ecc71}
+    .dot.bad{background:#e74c3c}
+    .dot.warn{background:#f1c40f}
 
-      --ok: rgba(0,255,150,0.9);
-      --warn: rgba(255,200,80,0.95);
-      --bad: rgba(255,120,120,0.95);
+    main{flex:1;display:flex;min-height:0}
+    #left{
+      width:380px;max-width:46vw;
+      border-right:1px solid var(--line);background:var(--panel);
+      display:flex;flex-direction:column;min-height:0;
+    }
+    #right{flex:1;display:flex;flex-direction:column;min-height:0}
 
-      --vac: rgba(0,255,150,0.75);
-      --cmp: rgba(255,180,0,0.85);
-      --buy: rgba(0,255,150,0.85);
-      --sell: rgba(255,80,80,0.85);
+    .controls{padding:10px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+    .row{display:flex;gap:8px;align-items:center}
+    input, select, button{
+      background:#0b0e11;color:var(--text);border:1px solid var(--line);border-radius:10px;
+      padding:10px 10px;font-size:14px;outline:none
     }
+    input{flex:1}
+    button{cursor:pointer}
+    button.primary{border-color:#2b3645;background:#101a25}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .small{font-size:12px;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted);line-height:1.4}
 
-    *{box-sizing:border-box;}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif;}
-    #app{display:flex;flex-direction:column;height:100vh;min-height:100vh;}
-
-    /* Adaptive layout */
-    #main{
-      display:flex;flex-direction:column;gap:0;
-      height:100%;
+    #top10{flex:1;overflow:auto;padding:10px;display:grid;gap:10px}
+    .card{
+      border:1px solid var(--line);border-radius:14px;background:#0b0e11;
+      padding:10px;display:grid;gap:8px
     }
-
-    /* Mobile: TOP10 on top, monitor below */
-    #leftPane{
-      border-bottom:1px solid var(--line);
-      padding:12px;
-      background:var(--panel);
-    }
-    #rightPane{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      min-height:55vh;
-      background:var(--panel);
-    }
-
-    /* Desktop: TOP10 left, monitor right */
-    @media (min-width: 980px){
-      #main{flex-direction:row;}
-      #leftPane{
-        width:440px;max-width:440px;min-width:360px;
-        border-bottom:none;border-right:1px solid var(--line);
-        height:100%;
-        overflow:auto;
-      }
-      #rightPane{height:100%;}
-    }
-
-    .h1{font-weight:700;margin:0 0 10px 0;font-size:16px;}
-    .row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:6px 0;}
-    .muted{color:var(--muted);}
-    .pill{
-      display:inline-block;padding:3px 10px;border:1px solid #2b3139;border-radius:999px;
-      font-size:12px;white-space:nowrap;
-    }
-    .ok{border-color:rgba(0,255,150,0.4);color:var(--ok);}
-    .warn{border-color:rgba(255,200,80,0.45);color:var(--warn);}
-    .bad{border-color:rgba(255,120,120,0.45);color:var(--bad);}
-
-    .controls{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px 0;}
-    .controls input, .controls select{
-      background:var(--card);color:var(--text);border:1px solid #2b3139;border-radius:10px;
-      padding:10px 10px;font-size:14px;outline:none;min-width:130px;
-    }
-    .controls button{
-      background:#101820;color:var(--text);border:1px solid #2b3139;border-radius:10px;
-      padding:10px 12px;font-size:14px;cursor:pointer;
-    }
-    .controls button:active{transform:translateY(1px);}
-
-    .toggles{display:flex;flex-direction:column;gap:8px;margin:10px 0 12px 0;}
-    .toggle{
-      display:flex;justify-content:space-between;align-items:center;
-      padding:10px;border:1px solid #2b3139;border-radius:12px;background:var(--card);
-    }
-    .toggle b{font-size:13px;}
-    .toggle small{display:block;color:var(--muted);margin-top:2px;font-size:12px;}
-    .switch{
-      width:44px;height:26px;border-radius:999px;background:#26303a;position:relative;border:1px solid #2b3139;
-      flex:0 0 auto;
-    }
-    .knob{
-      width:22px;height:22px;border-radius:50%;background:#cfd3dc;position:absolute;top:1px;left:1px;
-      transition:all .18s ease;
-    }
-    .switch.on{background:rgba(0,255,150,0.18);border-color:rgba(0,255,150,0.35);}
-    .switch.on .knob{left:20px;background:rgba(0,255,150,0.9);}
-
-    /* TOP10 table */
-    table{width:100%;border-collapse:collapse;margin-top:10px;}
-    thead th{
-      text-align:left;font-size:12px;color:var(--muted);font-weight:700;
-      padding:8px;border-bottom:1px solid var(--line);
-    }
-    tbody td{
-      padding:10px 8px;border-bottom:1px solid rgba(30,35,41,0.65);font-size:13px;
-    }
-    tbody tr{cursor:pointer;}
-    tbody tr:hover{background:rgba(255,255,255,0.02);}
-    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .card .head{display:flex;gap:8px;align-items:center}
+    .sym{font-weight:800;letter-spacing:.5px}
     .badge{
-      display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2b3139;color:var(--muted);
+      margin-left:auto;font-size:12px;padding:3px 8px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--muted)
     }
-    .bReady{border-color:rgba(0,255,150,0.35);color:var(--ok);}
-    .bWatch{border-color:rgba(255,200,80,0.35);color:var(--warn);}
-    .bUnstable{border-color:rgba(255,120,120,0.35);color:var(--bad);}
-    .bWarm{border-color:rgba(160,160,160,0.35);color:rgba(200,200,200,0.85);}
+    .bar{
+      height:8px;border-radius:999px;background:#111823;border:1px solid var(--line);overflow:hidden
+    }
+    .bar > div{height:100%;width:0%}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+    .kv b{color:var(--text);font-weight:700}
 
-    /* Monitor */
-    #monitorHeader{
-      padding:12px;border-bottom:1px solid var(--line);background:var(--panel);
+    #chartWrap{position:relative;flex:1;min-height:0}
+    #chart{position:absolute;inset:0}
+    #overlayLegend{
+      position:absolute;left:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;z-index:5;
+      pointer-events:none
     }
-    #chartWrap{
-      position:relative;flex:1;min-height:45vh;overflow:hidden;
+    .tag{
+      font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(15,20,27,.85);color:var(--muted)
     }
-    #chart{position:absolute;inset:0;}
-    #monitorFooter{
-      padding:12px;border-top:1px solid var(--line);background:var(--panel);font-size:13px;
+    .tag b{color:var(--text)}
+    #metrics{
+      border-top:1px solid var(--line);background:var(--panel);padding:10px;display:grid;gap:8px
     }
-    .kpiGrid{
-      display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;
-    }
-    @media (min-width: 980px){
-      .kpiGrid{grid-template-columns:1fr 1fr 1fr 1fr;}
-    }
-    .kpi{
-      background:var(--card);border:1px solid #2b3139;border-radius:12px;padding:10px;
-    }
-    .kpi .t{font-size:12px;color:var(--muted);margin-bottom:6px;}
-    .kpi .v{font-size:14px;font-weight:700;}
+    #metrics .h{font-weight:800}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{font-size:12px;padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--muted)}
+    .chip b{color:var(--text)}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .box{border:1px solid var(--line);border-radius:14px;background:#0b0e11;padding:10px;display:grid;gap:6px}
+    .box .t{font-weight:800}
+    .ok{color:#9be7c4}
+    .warn{color:#f5d76e}
+    .bad{color:#ff9a9a}
 
-    .smallNote{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35;}
+    @media (max-width: 860px){
+      main{flex-direction:column}
+      #left{width:100%;max-width:none;height:44vh;border-right:none;border-bottom:1px solid var(--line)}
+      #right{height:56vh}
+    }
   </style>
 </head>
 
 <body>
 <div id="app">
-  <div id="main">
-    <!-- LEFT: TOP10 -->
-    <div id="leftPane">
-      <div class="h1">Super Breakout LIVE — TOP-10 Screener</div>
+  <header>
+    <div class="title">Super Breakout LIVE — Screener</div>
+    <div class="pill">Compress · Vacuum · Aggression</div>
+    <div class="pill" id="universePill">Universe: Binance Futures (USDT-M)</div>
 
-      <div class="row">
-        <div>Savienojums</div>
-        <div id="conn" class="pill warn">Connecting...</div>
-      </div>
-      <div class="row">
-        <div>Datu režīms</div>
-        <div class="pill">LIVE WebSocket Only</div>
-      </div>
-      <div class="row">
-        <div>Score</div>
-        <div class="pill">LOCKED v1 · TF: <b>15m</b></div>
-      </div>
-      <div class="row">
-        <div>Kandidāti</div>
-        <div class="mono"><b id="candCount">0</b> / 50</div>
-      </div>
-      <div class="row">
-        <div>Atjaunojums</div>
-        <div id="lastUpdate" class="mono">—</div>
-      </div>
-
-      <div class="controls">
-        <input id="symbolInput" type="text" value="BTCUSDT" spellcheck="false" inputmode="text" />
-        <select id="tfSelect" disabled>
-          <option value="15m" selected>15m (LOCKED)</option>
-        </select>
-        <button id="openBtn">Atvērt uzraudzību</button>
-      </div>
-
-      <div class="toggles">
-        <div class="toggle">
-          <div>
-            <b>VACUUM</b>
-            <small>Tukšums starp cenām (FVG tipa gaps)</small>
-          </div>
-          <div id="swVac" class="switch on"><div class="knob"></div></div>
-        </div>
-        <div class="toggle">
-          <div>
-            <b>COMPRESS</b>
-            <small>Šaurs range pret ATR normu</small>
-          </div>
-          <div id="swCmp" class="switch on"><div class="knob"></div></div>
-        </div>
-        <div class="toggle">
-          <div>
-            <b>AGGRESSION</b>
-            <small>Buy/Sell līmeņi no lieliem ķermeņiem</small>
-          </div>
-          <div id="swAgr" class="switch on"><div class="knob"></div></div>
-        </div>
-      </div>
-
-      <div class="smallNote">
-        <b>Piezīme:</b> Top-10 tiek rēķināts no 15m sveču datiem tikai kandidātiem (Top-50).
-        Pirmajās minūtēs redzēsi <span class="badge bWarm">WARMING</span>, līdz savācas pietiekams sveču buferis.
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th style="width:44px;">#</th>
-            <th>Pair</th>
-            <th style="width:86px;">Score</th>
-            <th style="width:110px;">Status</th>
-          </tr>
-        </thead>
-        <tbody id="top10Body">
-          <tr><td colspan="4" class="muted">Ielādē pārus...</td></tr>
-        </tbody>
-      </table>
-
-      <div class="smallNote">
-        Klikšķini uz rindas — atvērsies uzraudzības logs ar grafiku un zonām, bez reload.
-      </div>
+    <div class="status">
+      <div class="dot warn" id="wsDot"></div>
+      <div id="wsText">Savienojums: inicializējas…</div>
+      <div class="pill" id="scanText">Scan: gaida</div>
     </div>
+  </header>
 
-    <!-- RIGHT: MONITOR -->
-    <div id="rightPane">
-      <div id="monitorHeader">
-        <div class="h1" style="margin-bottom:6px;">Īpašā Uzraudzība</div>
-        <div class="row" style="margin:0;">
-          <div>Aktīvais pāris</div>
-          <div class="mono"><b id="activeSymbol">BTCUSDT</b> · <span class="muted">TF:</span> <b id="activeTf">15m</b></div>
+  <main>
+    <section id="left">
+      <div class="controls">
+        <div class="row">
+          <input id="search" placeholder="Meklēt (piem. OP, ARB, PEPE)"/>
         </div>
-        <div class="row" style="margin:6px 0 0 0;">
-          <div>Pēdējā cena</div>
-          <div class="mono" id="activePrice">—</div>
+
+        <div class="row">
+          <select id="tf">
+            <option value="15m" selected>15m</option>
+            <option value="30m">30m</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+          </select>
+          <select id="mode">
+            <option value="ALT" selected>ALT only (ieteikts)</option>
+            <option value="ALL">ALL USDT-M (neieteikts)</option>
+          </select>
+          <button class="primary" id="startBtn">Start Screener</button>
         </div>
+
+        <div class="row">
+          <button id="stopBtn" disabled>Stop</button>
+          <button id="refreshBtn" disabled>Pārrēķināt Top 10</button>
+        </div>
+
+        <div class="hint">
+          Šis ir analītisks rīks. Atlase notiek pēc 3 soļiem:
+          <b>Compress</b> → <b>Vacuum</b> → <b>Aggression</b>.
+          Rezultāts: <b>Top 10</b> kandidāti. Klikšķis uz kartītes atver detalizētu grafiku.
+        </div>
+
+        <div class="small" id="progress">—</div>
       </div>
 
+      <div id="top10"></div>
+    </section>
+
+    <section id="right">
       <div id="chartWrap">
         <div id="chart"></div>
+        <div id="overlayLegend"></div>
       </div>
 
-      <div id="monitorFooter">
-        <div class="muted" style="font-size:12px;">
-          Uzraudzība fokusēta uz vienu pāri. Screener netaisa reload un nemaina lapu.
+      <div id="metrics">
+        <div class="h" id="selTitle">Nav izvēlēta monēta</div>
+
+        <div class="chips">
+          <div class="chip">TF: <b id="tfOut">15m</b></div>
+          <div class="chip">Status: <b id="stOut">—</b></div>
+          <div class="chip">CK: <b id="ckOut">—</b></div>
+          <div class="chip">Vacuum%: <b id="vacOut">—</b></div>
+          <div class="chip">AggDist%: <b id="agOut">—</b></div>
+          <div class="chip">Score: <b id="scOut">—</b></div>
         </div>
 
-        <div class="kpiGrid">
-          <div class="kpi">
-            <div class="t">VACUUM</div>
-            <div class="v" id="kpiVac">—</div>
+        <div class="split">
+          <div class="box">
+            <div class="t">Compress (price-based)</div>
+            <div class="small">Diapazons: <b id="cRange">—</b></div>
+            <div class="small">Zona: <b id="cZone">—</b></div>
           </div>
-          <div class="kpi">
-            <div class="t">COMPRESS</div>
-            <div class="v" id="kpiCmp">—</div>
+          <div class="box">
+            <div class="t">Vacuum (price-based)</div>
+            <div class="small">Virziens: <b id="vDir">—</b></div>
+            <div class="small">Zona: <b id="vZone">—</b></div>
           </div>
-          <div class="kpi">
-            <div class="t">AGGRESSION</div>
-            <div class="v" id="kpiAgr">—</div>
-          </div>
-          <div class="kpi">
-            <div class="t">SCORE (LOCKED v1)</div>
-            <div class="v" id="kpiScore">—</div>
-          </div>
+        </div>
+
+        <div class="box">
+          <div class="t">Aggression (price-based)</div>
+          <div class="small">Līmenis: <b id="aLevel">—</b></div>
+          <div class="small">Interpretācija: <span class="small">Aggression līmenis ir “degvielas siena” (aizsargāta zona), ne EMA.</span></div>
+        </div>
+
+        <div class="small">
+          Piezīme: algoritms ir “pragmatisks” (ātrai atlasei). Kad Top 10 strādā, mēs varam precizēt vakuuma/absorbcijas noteikumus.
         </div>
       </div>
-
-    </div>
-  </div>
+    </section>
+  </main>
 </div>
 
 <script>
 /**
- * LOCKED SCORE v1 (15m) — WebSocket only, no REST:
- * - Global WS: !markPrice@arr for all pairs
- * - Candidate Engine: Top-50 by fast proxy from markPrice returns
- * - One combined WS: kline_15m streams for the Top-50 candidates (+ active symbol)
- * - Score v1 computed from candle buffers:
- *   COMPRESS (range/ATR), VACUUM (gaps), AGGRESSION (big bodies),
- *   ABSORPTION (post-impulse stall), CHAOS penalty
+ * Super Breakout LIVE Screener (single-file)
+ * - Data source: Binance Futures (USDT-M) public endpoints
+ * - Screener logic: Compress -> Vacuum -> Aggression -> Score -> Top10
+ * - Chart: Lightweight Charts (candles) + overlays (price-based bands/lines)
+ *
+ * IMPORTANT: This is an educational analysis tool (no trading execution).
  */
 
-const UI = {
-  conn: document.getElementById("conn"),
-  lastUpdate: document.getElementById("lastUpdate"),
-  top10Body: document.getElementById("top10Body"),
-  candCount: document.getElementById("candCount"),
-
-  symbolInput: document.getElementById("symbolInput"),
-  tfSelect: document.getElementById("tfSelect"),
-  openBtn: document.getElementById("openBtn"),
-
-  swVac: document.getElementById("swVac"),
-  swCmp: document.getElementById("swCmp"),
-  swAgr: document.getElementById("swAgr"),
-
-  activeSymbol: document.getElementById("activeSymbol"),
-  activeTf: document.getElementById("activeTf"),
-  activePrice: document.getElementById("activePrice"),
-
-  kpiVac: document.getElementById("kpiVac"),
-  kpiCmp: document.getElementById("kpiCmp"),
-  kpiAgr: document.getElementById("kpiAgr"),
-  kpiScore: document.getElementById("kpiScore"),
+const API = {
+  exchangeInfo: "https://fapi.binance.com/fapi/v1/exchangeInfo",
+  klines: (sym, interval, limit=200) =>
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(sym)}&interval=${encodeURIComponent(interval)}&limit=${limit}`
 };
 
-function nowTime(){
-  const d = new Date();
-  return d.toLocaleTimeString("lv-LV",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-}
-function setConn(state){
-  UI.conn.classList.remove("ok","warn","bad");
-  if(state==="Connected"){ UI.conn.classList.add("ok"); }
-  else if(state==="Disconnected"){ UI.conn.classList.add("bad"); }
-  else { UI.conn.classList.add("warn"); }
-  UI.conn.textContent = state;
-}
-function normalizeSymbol(s){
-  return (s||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
-}
-function toggleSwitch(sw){
-  sw.classList.toggle("on");
-  renderOverlaysForActive();
-}
-UI.swVac.addEventListener("click", ()=>toggleSwitch(UI.swVac));
-UI.swCmp.addEventListener("click", ()=>toggleSwitch(UI.swCmp));
-UI.swAgr.addEventListener("click", ()=>toggleSwitch(UI.swAgr));
+const UI = {
+  wsDot: document.getElementById("wsDot"),
+  wsText: document.getElementById("wsText"),
+  scanText: document.getElementById("scanText"),
+  progress: document.getElementById("progress"),
+  top10: document.getElementById("top10"),
+  search: document.getElementById("search"),
+  tf: document.getElementById("tf"),
+  mode: document.getElementById("mode"),
+  startBtn: document.getElementById("startBtn"),
+  stopBtn: document.getElementById("stopBtn"),
+  refreshBtn: document.getElementById("refreshBtn"),
 
-/* =======================
-   CHART SETUP
-======================= */
+  selTitle: document.getElementById("selTitle"),
+  tfOut: document.getElementById("tfOut"),
+  stOut: document.getElementById("stOut"),
+  ckOut: document.getElementById("ckOut"),
+  vacOut: document.getElementById("vacOut"),
+  agOut: document.getElementById("agOut"),
+  scOut: document.getElementById("scOut"),
+  cRange: document.getElementById("cRange"),
+  cZone: document.getElementById("cZone"),
+  vDir: document.getElementById("vDir"),
+  vZone: document.getElementById("vZone"),
+  aLevel: document.getElementById("aLevel"),
+  overlayLegend: document.getElementById("overlayLegend"),
+};
+
+let running = false;
+let universe = [];
+let top10 = [];
+let selected = null;
+
+// Chart
 const chartEl = document.getElementById("chart");
 const chart = LightweightCharts.createChart(chartEl, {
-  layout: { background: { type:"solid", color:"#0b0e11" }, textColor:"#cfd3dc" },
-  grid: { vertLines:{ color:"#1e2329" }, horzLines:{ color:"#1e2329" } },
-  timeScale: { timeVisible:true, secondsVisible:false },
-  rightPriceScale: { borderColor:"#1e2329" },
-  crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-  handleScroll:true, handleScale:true,
+  layout: { background: { color: "#0b0e11" }, textColor: "#cfd3dc" },
+  grid: { vertLines: { color: "#141b24" }, horzLines: { color: "#141b24" } },
+  rightPriceScale: { borderColor: "#1e2329" },
+  timeScale: { borderColor: "#1e2329", timeVisible: true, secondsVisible: false },
+  crosshair: { mode: 1 }
 });
-const candlesSeries = chart.addCandlestickSeries({
-  upColor: "#00c084",
-  downColor: "#f6465d",
-  wickUpColor: "#00c084",
-  wickDownColor: "#f6465d",
-  borderVisible: false,
+const candleSeries = chart.addCandlestickSeries({
+  upColor: "#2ecc71", downColor: "#e74c3c",
+  borderUpColor: "#2ecc71", borderDownColor: "#e74c3c",
+  wickUpColor: "#2ecc71", wickDownColor: "#e74c3c"
 });
-function resizeChart(){ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }
-window.addEventListener("resize", resizeChart);
-resizeChart();
-
-/* Price-aware overlay lines */
-let overlayLines = [];
-function clearOverlayLines(){
-  try{ overlayLines.forEach(l => candlesSeries.removePriceLine(l)); }catch(_){}
+let overlayLines = []; // price lines
+function clearOverlays(){
+  overlayLines.forEach(pl => candleSeries.removePriceLine(pl));
   overlayLines = [];
+  UI.overlayLegend.innerHTML = "";
 }
-function addLine(price, color, title){
-  const line = candlesSeries.createPriceLine({
+function addTag(text){
+  const d = document.createElement("div");
+  d.className = "tag";
+  d.innerHTML = text;
+  UI.overlayLegend.appendChild(d);
+}
+function addPriceLine(price, title, color){
+  const pl = candleSeries.createPriceLine({
     price,
     color,
     lineWidth: 2,
     lineStyle: LightweightCharts.LineStyle.Solid,
     axisLabelVisible: true,
-    title: title || "",
+    title
   });
-  overlayLines.push(line);
+  overlayLines.push(pl);
+  return pl;
 }
 
-/* =======================
-   GLOBAL WS: ALL PAIRS
-======================= */
-let wsAll = null;
-let wsAllReconnect = null;
+// Utils
+const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
+const fmt = (n, d=2)=> (Number.isFinite(n)? n.toFixed(d) : "—");
+const pct = (n, d=2)=> (Number.isFinite(n)? (n*100).toFixed(d)+"%" : "—");
 
-const RET_WINDOW = 20;
-const SYMBOLS = new Map(); // symbol -> { p, t, rets[], lastP }
-function pushRet(st, ret){
-  st.rets.push(ret);
-  if(st.rets.length > RET_WINDOW) st.rets.shift();
+function isMajor(sym){
+  const majors = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","ADAUSDT","AVAXUSDT","DOTUSDT","DOGEUSDT","TRXUSDT","LINKUSDT","MATICUSDT"];
+  return majors.includes(sym);
 }
-
-/* Fast proxy score for candidate selection (not the final locked score) */
-function fastProxyScore(st){
-  const rets = st.rets;
-  if(!rets || rets.length < 8) return 0;
-
-  let m = 0;
-  for(const r of rets) m += r;
-  m /= rets.length;
-
-  let v = 0;
-  for(const r of rets) v += (r - m) * (r - m);
-  v /= rets.length;
-  const std = Math.sqrt(v);
-  const lastR = rets[rets.length-1] || 0;
-
-  const vol = std;
-  const compress = 1 / (vol + 1e-6);
-  const impulse = Math.abs(lastR) / (std + 1e-6);
-
-  const volN = Math.max(0, Math.min(1, vol / 0.01));
-  const cmpN = Math.max(0, Math.min(1, compress / 800));
-  const impN = Math.max(0, Math.min(1, impulse / 6));
-
-  return Math.round((cmpN*50) + (impN*30) + ((1-volN)*20));
+function intervalToBinance(tf){
+  // UI uses 15m/30m/1h/4h already matches Binance
+  return tf;
 }
-
-function connectAll(){
-  if(wsAllReconnect){ clearTimeout(wsAllReconnect); wsAllReconnect=null; }
-  try{ if(wsAll) wsAll.close(); }catch(_){}
-  setConn("Connecting...");
-
-  wsAll = new WebSocket("wss://fstream.binance.com/ws/!markPrice@arr");
-
-  wsAll.onopen = () => {
-    setConn("Connected");
-    UI.lastUpdate.textContent = nowTime();
-  };
-
-  wsAll.onmessage = (ev) => {
-    try{
-      const arr = JSON.parse(ev.data);
-      if(!Array.isArray(arr)) return;
-
-      const now = Date.now();
-      for(const x of arr){
-        const sym = x.s;
-        const p = parseFloat(x.p);
-        if(!sym || !Number.isFinite(p)) continue;
-        if(!sym.endsWith("USDT")) continue;
-
-        let st = SYMBOLS.get(sym);
-        if(!st){
-          st = { p, t: now, rets: [], lastP: p, proxy: 0 };
-          SYMBOLS.set(sym, st);
-        } else {
-          const ret = (p - st.lastP) / (st.lastP || p);
-          if(Number.isFinite(ret) && Math.abs(ret) < 0.2){
-            pushRet(st, ret);
-          }
-          st.lastP = p;
-          st.p = p;
-          st.t = now;
-        }
-        st.proxy = fastProxyScore(st);
-      }
-
-      UI.lastUpdate.textContent = nowTime();
-
-      // update active price quickly
-      const stA = SYMBOLS.get(STATE.activeSymbol);
-      if(stA) UI.activePrice.textContent = stA.p.toFixed(6);
-
-    }catch(_){}
-  };
-
-  wsAll.onerror = () => setConn("Degraded");
-  wsAll.onclose = () => {
-    setConn("Disconnected");
-    wsAllReconnect = setTimeout(connectAll, 1200);
+function klineToCandle(k){
+  return {
+    time: Math.floor(k[0]/1000),
+    open: parseFloat(k[1]),
+    high: parseFloat(k[2]),
+    low:  parseFloat(k[3]),
+    close:parseFloat(k[4]),
+    volume: parseFloat(k[5])
   };
 }
 
-/* =======================
-   CANDIDATE ENGINE (Top-50)
-======================= */
-const CANDIDATE_LIMIT = 50;
-let candidateSet = new Set(); // symbols selected
-function recomputeCandidates(){
-  // build list by proxy
-  const all = [];
-  SYMBOLS.forEach((st, sym)=>{
-    if(st.rets.length < 8) return;
-    all.push({ sym, proxy: st.proxy || 0 });
-  });
-  all.sort((a,b)=>b.proxy - a.proxy);
-  const top = all.slice(0, CANDIDATE_LIMIT).map(x=>x.sym);
-
-  candidateSet = new Set(top);
-  // always include active symbol
-  candidateSet.add(STATE.activeSymbol);
-
-  UI.candCount.textContent = String(Math.min(candidateSet.size, CANDIDATE_LIMIT));
-  KLINE.ensureStreams(candidateSet);
+/**
+ * CORE metrics (pragmatic):
+ * Compress:
+ *  - CurrentRange over last N candles
+ *  - NormalRange = median(high-low) over M candles (older window)
+ *  - CK = NormalRange / (CurrentRange/N) OR NormalRange / AvgRangeNow
+ *
+ * Vacuum (pragmatic):
+ *  - Find the strongest impulse in last K candles (by |close-open| * volumeFactor)
+ *  - Determine move from base->top (up) or top->base (down) over short window
+ *  - Vacuum% = |move| / lastClose
+ *  - Vacuum zone = [min(base,top), max(base,top)]
+ *  - Direction = UP if impulse up and zone above current price OR price inside zone
+ *
+ * Aggression (pragmatic):
+ *  - Aggression level = protective level near impulse origin:
+ *    - If impulse up: level = impulse candle low (support)
+ *    - If impulse down: level = impulse candle high (resistance)
+ *  - AggDist% = |lastClose - level|/lastClose
+ */
+function median(arr){
+  if(!arr.length) return NaN;
+  const a=[...arr].sort((x,y)=>x-y);
+  const m=Math.floor(a.length/2);
+  return a.length%2? a[m] : (a[m-1]+a[m])/2;
 }
 
-/* Run candidate refresh periodically */
-setInterval(recomputeCandidates, 4000);
+function analyzeSymbol(candles){
+  if(!candles || candles.length < 120) return null;
 
-/* =======================
-   KLINE COMBINED WS (15m)
-======================= */
-const TF_LOCKED = "15m";
-const BUF_MAX = 260;
+  const last = candles[candles.length-1];
+  const lastClose = last.close;
 
-// candlesBySymbol: symbol -> [{time,open,high,low,close}]
-const candlesBySymbol = new Map();
-
-function streamName(sym){
-  return `${sym.toLowerCase()}@kline_${TF_LOCKED}`;
-}
-function combinedURL(streams){
-  const s = streams.join("/");
-  return `wss://fstream.binance.com/stream?streams=${s}`;
-}
-
-const KLINE = {
-  ws: null,
-  reconnectTimer: null,
-  streams: [],         // current streams list
-  symSet: new Set(),   // current symbols
-  ensureStreams(symSet){
-    // limit to 50 + active
-    const arr = Array.from(symSet).slice(0, CANDIDATE_LIMIT + 1);
-    const streams = arr.map(streamName).sort();
-
-    // compare with existing
-    const same = (streams.length === this.streams.length) && streams.every((v,i)=>v===this.streams[i]);
-    if(same) return;
-
-    this.streams = streams;
-    this.symSet = new Set(arr);
-    this.connect();
-  },
-  connect(){
-    if(this.reconnectTimer){ clearTimeout(this.reconnectTimer); this.reconnectTimer=null; }
-    try{ if(this.ws) this.ws.close(); }catch(_){}
-
-    if(!this.streams.length) return;
-
-    const url = combinedURL(this.streams);
-    this.ws = new WebSocket(url);
-
-    this.ws.onmessage = (ev)=>{
-      try{
-        const msg = JSON.parse(ev.data);
-        if(!msg || !msg.data || !msg.data.k) return;
-
-        const k = msg.data.k;
-        const sym = msg.data.s || k.s;
-        if(!sym) return;
-
-        const timeSec = Math.floor(k.t / 1000);
-        const c = {
-          time: timeSec,
-          open: parseFloat(k.o),
-          high: parseFloat(k.h),
-          low:  parseFloat(k.l),
-          close: parseFloat(k.c),
-        };
-        if(!Number.isFinite(c.open)||!Number.isFinite(c.high)||!Number.isFinite(c.low)||!Number.isFinite(c.close)) return;
-
-        let buf = candlesBySymbol.get(sym);
-        if(!buf){
-          buf = [];
-          candlesBySymbol.set(sym, buf);
-        }
-        const last = buf[buf.length-1];
-        if(!last || last.time < c.time){
-          buf.push(c);
-          if(buf.length > BUF_MAX) buf.shift();
-        } else if(last.time === c.time){
-          buf[buf.length-1] = c;
-        }
-
-        // If active symbol, update chart in real time
-        if(sym === STATE.activeSymbol){
-          candlesSeries.update(c);
-          UI.activePrice.textContent = c.close.toFixed(6);
-          scheduleActiveRecalc();
-        }
-
-      }catch(_){}
-    };
-
-    this.ws.onclose = ()=>{
-      this.reconnectTimer = setTimeout(()=>this.connect(), 1400);
-    };
-  }
-};
-
-/* =======================
-   LOCKED SCORE v1 (15m)
-======================= */
-function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
-function calcATR(buf, n){
-  if(buf.length < n+1) return null;
-  let sum = 0;
-  for(let i=buf.length-n; i<buf.length; i++){
-    const c = buf[i];
-    const prev = buf[i-1];
-    const tr = Math.max(
-      c.high - c.low,
-      Math.abs(c.high - prev.close),
-      Math.abs(c.low - prev.close)
-    );
-    sum += tr;
-  }
-  return sum / n;
-}
-
-function calcCompress(buf){
-  // Compress based on range vs ATR norm
+  // ---- Compress
   const N = 40;
-  const ATR_N = 40;
-  if(buf.length < Math.max(N, ATR_N)+2) return null;
+  const M = Math.min(200, candles.length);
+  const recent = candles.slice(-N);
+  const base = candles.slice(-M);
 
-  const atr = calcATR(buf, ATR_N);
-  if(!atr || atr <= 0) return null;
+  const currentHigh = Math.max(...recent.map(c=>c.high));
+  const currentLow  = Math.min(...recent.map(c=>c.low));
+  const currentRange = Math.max(1e-12, currentHigh - currentLow);
 
-  const slice = buf.slice(-N);
-  let high = -Infinity, low = Infinity;
-  for(const c of slice){ if(c.high>high) high=c.high; if(c.low<low) low=c.low; }
+  const ranges = base.map(c=>Math.max(1e-12, c.high-c.low));
+  const normalRange = median(ranges); // typical candle range
+  const avgRecentRange = recent.reduce((s,c)=>s+(c.high-c.low),0)/recent.length;
 
-  const lastClose = slice[slice.length-1].close;
-  const range = high - low;
-  const rangeN = range / (lastClose || 1);
-  const atrN = atr / (lastClose || 1);
+  const CK = normalRange / Math.max(1e-12, avgRecentRange); // higher = more compressed
 
-  const X = 1.2; // compress threshold multiplier (LOCKED v1 constant)
-  const active = (rangeN < X * atrN);
-
-  const strength = clamp((1 - (rangeN / (X * atrN))) * 100, 0, 100);
-
-  return { active, strength, low, high, atr };
-}
-
-function calcVacuumZones(buf){
-  // Vacuum = gap between prices (FVG-like), not wick.
-  // Bull vacuum: prev.high < next.low => zone [prev.high, next.low]
-  // Bear vacuum: prev.low > next.high => zone [next.high, prev.low]
-  if(buf.length < 12) return [];
-  const zones = [];
-  for(let i=2; i<buf.length-2; i++){
-    const prev = buf[i-1];
-    const next = buf[i+1];
-    if(prev.high < next.low){
-      zones.push({ from: prev.high, to: next.low, dir: "UP", idx: i });
-    } else if(prev.low > next.high){
-      zones.push({ from: next.high, to: prev.low, dir: "DOWN", idx: i });
-    }
-  }
-  // prefer biggest first (then newest)
-  zones.sort((a,b)=>{
-    const sa = Math.abs(a.to-a.from);
-    const sb = Math.abs(b.to-b.from);
-    if(sb !== sa) return sb - sa;
-    return b.idx - a.idx;
-  });
-  return zones.slice(0, 3);
-}
-
-function calcAggressionLevels(buf){
-  // Aggression = big bodies (no EMA)
-  const N = 30;
-  if(buf.length < N+5) return [];
-  const slice = buf.slice(-N);
-  const bodies = slice.map(c => Math.abs(c.close - c.open));
-  const avg = bodies.reduce((a,b)=>a+b,0) / bodies.length;
-  if(!avg || avg<=0) return [];
-
-  const A = 2.2; // threshold
-  const levels = [];
-  for(let i=slice.length-10; i<slice.length; i++){
-    const c = slice[i];
+  // ---- Impulse scan (for Vacuum + Aggression)
+  const K = 120;
+  const window = candles.slice(-K);
+  let best = {score:-Infinity, idx:-1, dir:0};
+  for(let i=0;i<window.length;i++){
+    const c = window[i];
     const body = Math.abs(c.close - c.open);
-    if(body > avg * A){
-      levels.push({ price: c.close, side: (c.close >= c.open) ? "BUY" : "SELL" });
+    const range = Math.max(1e-12, c.high - c.low);
+    const bodyRatio = body / range; // 0..1
+    const vol = Math.max(1e-12, c.volume);
+    const score = body * (0.6 + 0.4*bodyRatio) * Math.log10(1+vol);
+    const dir = (c.close >= c.open) ? 1 : -1;
+    if(score > best.score){
+      best = {score, idx:i, dir};
     }
   }
-  return levels.slice(-4);
-}
+  if(best.idx < 5) return null;
 
-function calcAbsorption(buf, atr){
-  // Absorption proxy:
-  // If we had a strong impulse (close - close_5)/ATR > 2
-  // and then the last 3-4 candles stall (small net progress) -> absorption high
-  if(buf.length < 16 || !atr || atr<=0) return { level: 0, note: "—" };
+  const imp = window[best.idx];
+  const impPriceRef = (best.dir>0) ? imp.low : imp.high; // aggression protective level
 
-  const last = buf[buf.length-1];
-  const c5 = buf[buf.length-6]?.close;
-  if(!c5) return { level: 0, note: "—" };
+  // define move window around impulse: from (idx-3) to (idx+3) clamped
+  const s = Math.max(0, best.idx-3);
+  const e = Math.min(window.length-1, best.idx+3);
+  const seg = window.slice(s, e+1);
 
-  const impulse = (last.close - c5) / atr; // positive or negative
-  const impAbs = Math.abs(impulse);
+  const segLow = Math.min(...seg.map(c=>c.low));
+  const segHigh = Math.max(...seg.map(c=>c.high));
+  const move = segHigh - segLow;
 
-  if(impAbs < 2.0) return { level: 0, note: "nav" };
+  // Vacuum zone: from segLow to segHigh
+  // But direction depends on impulse dir & relative position to current price
+  let vacuumDir = best.dir>0 ? "UP" : "DOWN";
+  let vFrom = segLow;
+  let vTo = segHigh;
+  const vacuumPct = move / Math.max(1e-12, lastClose);
 
-  // stall check: last 4 candles net move small relative to ATR
-  const c4 = buf[buf.length-5]?.close;
-  const net = Math.abs(last.close - c4);
-  const stall = net < (0.35 * atr);
+  // Aggression distance
+  const agDist = Math.abs(lastClose - impPriceRef) / Math.max(1e-12, lastClose);
 
-  // counter pressure: count opposite bodies in last 4
-  let opp = 0;
-  for(let i=buf.length-4; i<buf.length; i++){
-    const c = buf[i];
-    const dir = (c.close >= c.open) ? 1 : -1;
-    const impDir = (impulse >= 0) ? 1 : -1;
-    if(dir !== impDir) opp++;
-  }
+  // Status (very pragmatic)
+  // If CK high => Compress
+  // If price breaks out beyond recent range => Release
+  // If inside vacuum and volume falling => Absorption (heuristic)
+  let status = "Neutral";
+  if(CK >= 2.8) status = "Compress";
+  if(lastClose > currentHigh || lastClose < currentLow) status = "Release";
 
-  let level = 0;
-  if(stall) level += 60;
-  if(opp >= 2) level += 40;
-
-  level = clamp(level, 0, 100);
-  const note = level >= 70 ? "AUGSTA" : (level >= 40 ? "VIDĒJA" : "ZEMA");
-  return { level, note };
-}
-
-function calcChaosPenalty(buf, atr){
-  // chaos: too many alternations / aggression flips
-  if(buf.length < 20 || !atr || atr<=0) return 0;
-
-  const N = 14;
-  const slice = buf.slice(-N);
-  let flips = 0;
-  let lastDir = null;
-  for(const c of slice){
-    const dir = (c.close >= c.open) ? 1 : -1;
-    if(lastDir !== null && dir !== lastDir) flips++;
-    lastDir = dir;
-  }
-  // normalized
-  const chaos = clamp((flips / (N-1)) * 100, 0, 100);
-  // convert to penalty 0..30
-  return Math.round(clamp(chaos * 0.30, 0, 30));
-}
-
-function lockedScoreV1(sym){
-  const buf = candlesBySymbol.get(sym);
-  if(!buf || buf.length < 60) {
-    return { ok:false, status:"WARMING", score:0, vac:"—", cmp:"—", agr:"—" };
-  }
-
-  const c = calcCompress(buf);
-  if(!c) return { ok:false, status:"WARMING", score:0, vac:"—", cmp:"—", agr:"—" };
-
-  const zones = calcVacuumZones(buf);
-  const agrLvls = calcAggressionLevels(buf);
-  const abs = calcAbsorption(buf, c.atr);
-  const chaosPen = calcChaosPenalty(buf, c.atr);
-
-  // COMPRESS contribution
-  const compressN = c.active ? (c.strength/100) : (c.strength/200); // if not active, half influence
-
-  // VACUUM contribution (prefer zone near compress bounds)
-  let vacN = 0;
-  let vacTxt = "nav";
-  if(zones.length){
-    const z = zones[0];
-    const size = Math.abs(z.to - z.from);
-    const lastClose = buf[buf.length-1].close;
-    const sizePct = (size / (lastClose||1)) * 100;
-
-    // proximity: if vacuum sits near compress high/low range => stronger
-    const mid = (z.from + z.to)/2;
-    const prox = (mid >= c.low && mid <= c.high) ? 1.0 : 0.7;
-
-    // normalize: 0..1 by size relative to ATR (more objective)
-    const sizeAtr = size / (c.atr||1);
-    const sizeN = clamp(sizeAtr / 2.2, 0, 1); // 2.2 ATR = big
-
-    vacN = clamp((sizeN * prox), 0, 1);
-    vacTxt = `${z.dir} ${sizePct.toFixed(2)}%`;
-  }
-
-  // AGGRESSION quality: do we have clear fuel levels?
-  let agrN = 0;
-  let agrTxt = "nav";
-  if(agrLvls.length){
-    // quality: if we have at least one BUY or SELL big body recently
-    const last = agrLvls[agrLvls.length-1];
-    agrTxt = `${last.side}`;
-    // stronger if level is near compress boundaries (fuel wall)
-    const price = last.price;
-    const near = (price >= (c.low - 0.6*c.atr) && price <= (c.high + 0.6*c.atr)) ? 1.0 : 0.75;
-    agrN = clamp((agrLvls.length / 4) * near, 0, 1);
-  }
-
-  // BreakoutPotential proxy: vacuum size + compress strength synergy
-  const breakoutN = clamp((vacN*0.55 + compressN*0.45), 0, 1);
-
-  // Base score (0..100)
-  let score =
-    (compressN * 35) +
-    (vacN * 25) +
-    (agrN * 20) +
-    (breakoutN * 20);
-
-  // Penalties
-  const absorptionPenalty = Math.round(clamp(abs.level * 0.40, 0, 40)); // up to -40
-  score -= absorptionPenalty;
-  score -= chaosPen;
-
-  score = clamp(Math.round(score), 0, 100);
-
-  // Status
-  let status = "WATCH";
-  if(score >= 72 && c.active) status = "READY";
-  if(score < 35) status = "UNSTABLE";
-  if(!c.active && score < 55) status = "UNSTABLE";
+  // Score (locked weights)
+  // Normalize to 0..1 with pragmatic caps
+  const ckN = Math.min(CK/6.0, 1);            // CK cap at ~6
+  const vN  = Math.min(vacuumPct/0.25, 1);    // 25% cap
+  const agN = Math.max(0, 1 - (agDist/0.08)); // best if within 8%
+  const score = 0.40*ckN + 0.40*vN + 0.20*agN;
 
   return {
-    ok:true,
-    score,
+    lastClose,
+    CK,
+    compress: {low: currentLow, high: currentHigh, range: currentRange},
+    vacuum: {from: vFrom, to: vTo, pct: vacuumPct, dir: vacuumDir},
+    aggression: {level: impPriceRef, dist: agDist, dir: best.dir>0?"BULL":"BEAR"},
     status,
-    vac: vacTxt,
-    cmp: (c.active ? `${Math.round(c.strength)}%` : `N/A (${Math.round(c.strength)}%)`),
-    agr: agrTxt,
-    absNote: abs.note,
-    absLevel: abs.level,
-    compress: c,
-    vacuumZones: zones,
-    aggression: agrLvls
+    score
   };
 }
 
-/* =======================
-   TOP10 render (LOCKED)
-======================= */
-function badgeHTML(s){
-  if(s==="READY") return `<span class="badge bReady">READY</span>`;
-  if(s==="WATCH") return `<span class="badge bWatch">WATCH</span>`;
-  if(s==="WARMING") return `<span class="badge bWarm">WARMING</span>`;
-  return `<span class="badge bUnstable">UNSTABLE</span>`;
+function scoreColor(score){
+  if(score >= 0.72) return "#2ecc71";
+  if(score >= 0.52) return "#f1c40f";
+  return "#e74c3c";
 }
 
-let top10Timer = null;
-function scheduleTop10(){
-  if(top10Timer) return;
-  top10Timer = setTimeout(()=>{
-    top10Timer=null;
-    renderTop10Locked();
-  }, 800);
+function createCard(item){
+  const d = document.createElement("div");
+  d.className = "card";
+  const sPct = Math.round(item.score*100);
+  const barColor = scoreColor(item.score);
+
+  d.innerHTML = `
+    <div class="head">
+      <div class="sym">${item.symbol}</div>
+      <div class="badge">SCORE ${sPct}%</div>
+    </div>
+
+    <div class="bar"><div style="width:${sPct}%; background:${barColor};"></div></div>
+
+    <div class="grid2">
+      <div class="kv"><span>CK</span><b>${fmt(item.CK,2)}</b></div>
+      <div class="kv"><span>Vacuum</span><b>${(item.vacuumPct*100).toFixed(1)}%</b></div>
+      <div class="kv"><span>AggDist</span><b>${(item.agDist*100).toFixed(1)}%</b></div>
+      <div class="kv"><span>Status</span><b>${item.status}</b></div>
+    </div>
+
+    <div class="small">Klikšķini, lai atvērtu grafiku ar zonām.</div>
+  `;
+
+  d.addEventListener("click", ()=> selectSymbol(item.symbol, item.tf));
+  return d;
 }
 
-function renderTop10Locked(){
-  // Score only candidates (Top-50) to keep CPU stable
-  const list = [];
-  candidateSet.forEach(sym=>{
-    const r = lockedScoreV1(sym);
-    if(r.status === "WARMING"){
-      list.push({ sym, score: -1, status:"WARMING", warm:true });
-      return;
-    }
-    list.push({ sym, score: r.score, status: r.status, warm:false, r });
+function renderTop10(list){
+  UI.top10.innerHTML = "";
+  const q = (UI.search.value || "").trim().toUpperCase();
+  const filtered = q ? list.filter(x=>x.symbol.includes(q)) : list;
+
+  filtered.forEach(it=>{
+    UI.top10.appendChild(createCard(it));
   });
 
-  // Show something even while warming
-  if(list.length === 0){
-    UI.top10Body.innerHTML = `<tr><td colspan="4" class="muted">Vēl nav kandidātu...</td></tr>`;
-    return;
+  if(!filtered.length){
+    const d = document.createElement("div");
+    d.className = "small";
+    d.style.padding = "10px";
+    d.textContent = "Nav rezultātu (pamēģini citu meklēšanu vai pārrēķinu).";
+    UI.top10.appendChild(d);
+  }
+}
+
+async function fetchUniverse(){
+  UI.progress.textContent = "Ielādē Binance Futures simbolus…";
+  const r = await fetch(API.exchangeInfo);
+  if(!r.ok) throw new Error("exchangeInfo fetch failed");
+  const data = await r.json();
+
+  // USDT-M perpetual, trading
+  let syms = data.symbols
+    .filter(s => s.contractType === "PERPETUAL" && s.quoteAsset === "USDT" && s.status === "TRADING")
+    .map(s => s.symbol);
+
+  // Remove stable-ish or majors based on mode
+  const mode = UI.mode.value;
+  if(mode === "ALT"){
+    syms = syms.filter(s => !isMajor(s));
   }
 
-  // Sort: scored first, then warming
-  list.sort((a,b)=>{
-    if(a.warm && !b.warm) return 1;
-    if(!a.warm && b.warm) return -1;
-    return (b.score - a.score);
-  });
+  universe = syms;
+  UI.progress.textContent = `Universe: ${universe.length} simboli.`;
+}
 
-  const top = list.slice(0, 10);
+async function scanOnce(){
+  const tf = intervalToBinance(UI.tf.value);
+  const total = universe.length;
 
-  UI.top10Body.innerHTML = top.map((x,i)=>{
-    const price = SYMBOLS.get(x.sym)?.p;
-    const priceTxt = Number.isFinite(price) ? price.toFixed(6) : "—";
-    const sTxt = x.warm ? "—" : String(x.score);
-    return `
-      <tr data-sym="${x.sym}">
-        <td class="mono">${i+1}</td>
-        <td class="mono">
-          <b>${x.sym}</b>
-          <div class="muted" style="font-size:12px;margin-top:2px;">Cena: ${priceTxt}</div>
-        </td>
-        <td class="mono"><b>${sTxt}</b></td>
-        <td>${badgeHTML(x.status)}</td>
-      </tr>
-    `;
-  }).join("");
+  const results = [];
+  let done = 0;
+  UI.scanText.textContent = "Scan: darbojas";
+  UI.refreshBtn.disabled = true;
 
-  UI.top10Body.querySelectorAll("tr[data-sym]").forEach(tr=>{
-    tr.addEventListener("click", ()=>{
-      const sym = tr.getAttribute("data-sym");
-      if(sym) openMonitor(sym);
+  // Batch scanning to avoid hammering API; still heavy if universe huge.
+  // Practical: scan in batches and keep Top10 updated.
+  const batchSize = 18;
+  for(let i=0; i<total && running; i+=batchSize){
+    const batch = universe.slice(i, i+batchSize);
+
+    // fetch klines in parallel for batch
+    const promises = batch.map(async sym=>{
+      try{
+        const url = API.klines(sym, tf, 220);
+        const res = await fetch(url);
+        if(!res.ok) return null;
+        const raw = await res.json();
+        const candles = raw.map(klineToCandle);
+
+        const a = analyzeSymbol(candles);
+        if(!a) return null;
+
+        // HARD FILTERS (locked): Compress -> Vacuum -> Aggression proximity
+        // Compress: CK >= 2.8
+        // Vacuum: >= 8%
+        // Aggression distance: <= 10%
+        if(a.CK < 2.8) return null;
+        if(a.vacuum.pct < 0.08) return null;
+        if(a.aggression.dist > 0.10) return null;
+
+        return {
+          symbol: sym,
+          tf,
+          score: a.score,
+          CK: a.CK,
+          vacuumPct: a.vacuum.pct,
+          agDist: a.aggression.dist,
+          status: a.status
+        };
+      }catch(e){
+        return null;
+      }
     });
-  });
-}
 
-/* =======================
-   ACTIVE MONITOR
-======================= */
-const STATE = {
-  activeSymbol: "BTCUSDT",
-  tf: TF_LOCKED
-};
+    const batchRes = await Promise.all(promises);
+    batchRes.filter(Boolean).forEach(x=>results.push(x));
 
-function openMonitor(symbol){
-  let sym = normalizeSymbol(symbol);
-  if(!sym.endsWith("USDT")) sym += "USDT";
-  STATE.activeSymbol = sym;
+    done = Math.min(total, i+batchSize);
+    UI.progress.textContent = `Scan progress: ${done}/${total} (TF ${tf}) | Kandidāti: ${results.length}`;
 
-  UI.symbolInput.value = sym;
-  UI.activeSymbol.textContent = sym;
-  UI.activeTf.textContent = TF_LOCKED;
+    // Update Top10 preview on the fly
+    results.sort((a,b)=>b.score-a.score);
+    top10 = results.slice(0,10);
+    renderTop10(top10);
 
-  // ensure active in candidate streams
-  candidateSet.add(sym);
-  KLINE.ensureStreams(candidateSet);
-
-  // load buffer if we already have it
-  const buf = candlesBySymbol.get(sym);
-  if(buf && buf.length){
-    candlesSeries.setData(buf);
-    chart.timeScale().scrollToRealTime();
-  } else {
-    candlesSeries.setData([]);
+    // Respect rate limits
+    await sleep(250);
   }
 
-  renderActiveKPIs();
-  renderOverlaysForActive();
+  // Finalize
+  results.sort((a,b)=>b.score-a.score);
+  top10 = results.slice(0,10);
+  renderTop10(top10);
+
+  UI.scanText.textContent = "Scan: pabeigts";
+  UI.refreshBtn.disabled = false;
 }
 
-/* Manual open */
-UI.openBtn.addEventListener("click", ()=>{
-  openMonitor(UI.symbolInput.value);
+async function start(){
+  if(running) return;
+  running = true;
+  UI.startBtn.disabled = true;
+  UI.stopBtn.disabled = false;
+  UI.refreshBtn.disabled = true;
+
+  UI.wsDot.className = "dot ok";
+  UI.wsText.textContent = "Savienojums: LIVE (REST klines + live screener)";
+
+  try{
+    await fetchUniverse();
+    await scanOnce();
+  }catch(e){
+    UI.wsDot.className = "dot bad";
+    UI.wsText.textContent = "Savienojums: kļūda";
+    UI.progress.textContent = "Kļūda: " + (e?.message || String(e));
+  }finally{
+    UI.startBtn.disabled = false;
+    UI.stopBtn.disabled = true;
+    UI.refreshBtn.disabled = false;
+    running = false;
+  }
+}
+
+function stop(){
+  running = false;
+  UI.scanText.textContent = "Scan: apturēts";
+  UI.progress.textContent = "Apturēts.";
+  UI.startBtn.disabled = false;
+  UI.stopBtn.disabled = true;
+  UI.refreshBtn.disabled = false;
+}
+
+async function refresh(){
+  if(running) return;
+  running = true;
+  UI.refreshBtn.disabled = true;
+  UI.startBtn.disabled = true;
+  UI.stopBtn.disabled = false;
+  try{
+    await scanOnce();
+  }finally{
+    running = false;
+    UI.refreshBtn.disabled = false;
+    UI.startBtn.disabled = false;
+    UI.stopBtn.disabled = true;
+  }
+}
+
+async function selectSymbol(sym, tf){
+  selected = {sym, tf};
+  UI.selTitle.textContent = `Grafiks: ${sym}`;
+  UI.tfOut.textContent = tf;
+  clearOverlays();
+
+  UI.progress.textContent = `Ielādē grafiku: ${sym} (${tf})…`;
+
+  try{
+    const res = await fetch(API.klines(sym, tf, 300));
+    if(!res.ok) throw new Error("klines fetch failed");
+    const raw = await res.json();
+    const candles = raw.map(klineToCandle);
+
+    candleSeries.setData(candles);
+
+    const a = analyzeSymbol(candles);
+    if(!a) throw new Error("insufficient data for analysis");
+
+    // Update metrics
+    UI.stOut.textContent = a.status;
+    UI.ckOut.textContent = fmt(a.CK,2);
+    UI.vacOut.textContent = (a.vacuum.pct*100).toFixed(1) + "%";
+    UI.agOut.textContent = (a.aggression.dist*100).toFixed(1) + "%";
+    UI.scOut.textContent = Math.round(a.score*100) + "%";
+
+    UI.cRange.textContent = fmt(a.compress.range, 6);
+    UI.cZone.textContent = `${fmt(a.compress.low, 2)} → ${fmt(a.compress.high, 2)}`;
+    UI.vDir.textContent = a.vacuum.dir;
+    UI.vZone.textContent = `${fmt(a.vacuum.from, 2)} → ${fmt(a.vacuum.to, 2)}`;
+    UI.aLevel.textContent = `${fmt(a.aggression.level, 2)} (${a.aggression.dir})`;
+
+    // Overlays (price-based) using price lines
+    // Compress band (two lines)
+    addTag(`<b>COMPRESS</b> ${fmt(a.compress.low,2)} → ${fmt(a.compress.high,2)}`);
+    addPriceLine(a.compress.low, "COMPRESS LOW", "rgba(255,180,0,.85)");
+    addPriceLine(a.compress.high, "COMPRESS HIGH", "rgba(255,180,0,.85)");
+
+    // Vacuum band (two lines)
+    addTag(`<b>VACUUM</b> ${a.vacuum.dir} ${fmt(a.vacuum.from,2)} → ${fmt(a.vacuum.to,2)}`);
+    addPriceLine(a.vacuum.from, "VACUUM FROM", "rgba(0,255,150,.85)");
+    addPriceLine(a.vacuum.to, "VACUUM TO", "rgba(0,255,150,.85)");
+
+    // Aggression level
+    addTag(`<b>AGGRESSION</b> ${fmt(a.aggression.level,2)}`);
+    addPriceLine(a.aggression.level, "AGGRESSION", "rgba(255,80,80,.85)");
+
+    UI.progress.textContent = `Gatavs: ${sym} (${tf}).`;
+  }catch(e){
+    UI.progress.textContent = `Kļūda ielādējot ${sym}: ` + (e?.message || String(e));
+  }
+}
+
+// Wire up UI
+UI.startBtn.addEventListener("click", start);
+UI.stopBtn.addEventListener("click", stop);
+UI.refreshBtn.addEventListener("click", refresh);
+UI.tf.addEventListener("change", ()=>{
+  UI.tfOut.textContent = UI.tf.value;
+  if(top10.length) renderTop10(top10.map(x=>({...x, tf:UI.tf.value})));
+});
+UI.search.addEventListener("input", ()=> renderTop10(top10));
+UI.mode.addEventListener("change", ()=>{
+  // reset universe on mode change
+  universe = [];
+  top10 = [];
+  renderTop10([]);
+  UI.progress.textContent = "Mode mainīts. Spied Start Screener.";
 });
 
-/* =======================
-   ACTIVE KPIs + Overlays
-======================= */
-let activeTimer = null;
-function scheduleActiveRecalc(){
-  if(activeTimer) return;
-  activeTimer = setTimeout(()=>{
-    activeTimer=null;
-    renderActiveKPIs();
-    renderOverlaysForActive();
-    scheduleTop10();
-  }, 600);
-}
-
-function renderActiveKPIs(){
-  const sym = STATE.activeSymbol;
-  const r = lockedScoreV1(sym);
-
-  if(!r.ok){
-    UI.kpiVac.textContent = "—";
-    UI.kpiCmp.textContent = "—";
-    UI.kpiAgr.textContent = "—";
-    UI.kpiScore.textContent = "WARMING";
-    return;
-  }
-
-  UI.kpiVac.textContent = r.vac;
-  UI.kpiCmp.textContent = r.cmp;
-  UI.kpiAgr.textContent = `${r.agr} · ABS: ${r.absNote}`;
-  UI.kpiScore.textContent = `${r.score} (${r.status})`;
-}
-
-function renderOverlaysForActive(){
-  clearOverlayLines();
-  const sym = STATE.activeSymbol;
-  const buf = candlesBySymbol.get(sym);
-  if(!buf || buf.length < 60) return;
-
-  const showVac = UI.swVac.classList.contains("on");
-  const showCmp = UI.swCmp.classList.contains("on");
-  const showAgr = UI.swAgr.classList.contains("on");
-
-  const r = lockedScoreV1(sym);
-  if(!r.ok) return;
-
-  // COMPRESS lines
-  if(showCmp && r.compress){
-    addLine(r.compress.low,  "rgba(255,180,0,0.75)", "CMP low");
-    addLine(r.compress.high, "rgba(255,180,0,0.75)", "CMP high");
-    addLine((r.compress.low+r.compress.high)/2, "rgba(255,180,0,0.25)", "COMPRESS");
-  }
-
-  // VACUUM zones (show first 1-2)
-  if(showVac && r.vacuumZones && r.vacuumZones.length){
-    const z = r.vacuumZones[0];
-    addLine(z.from, "rgba(0,255,150,0.70)", "VAC start");
-    addLine(z.to,   "rgba(0,255,150,0.70)", "VAC end");
-    addLine((z.from+z.to)/2, "rgba(0,255,150,0.25)", "VACUUM");
-  }
-
-  // AGGRESSION levels (last 2)
-  if(showAgr && r.aggression && r.aggression.length){
-    const lastTwo = r.aggression.slice(-2);
-    lastTwo.forEach((a,i)=>{
-      const color = (a.side==="BUY") ? "rgba(0,255,150,0.85)" : "rgba(255,80,80,0.85)";
-      addLine(a.price, color, `${a.side}`);
-    });
-  }
-}
-
-/* =======================
-   INIT
-======================= */
-setConn("Connecting...");
-connectAll();
-
-// Start with BTC
-openMonitor("BTCUSDT");
-
-// schedule periodic Top10 render
-setInterval(scheduleTop10, 1600);
-
-// also schedule top10 after candidate changes
-setInterval(()=>{ scheduleTop10(); }, 3500);
+// Initial state
+UI.wsDot.className = "dot warn";
+UI.wsText.textContent = "Savienojums: gaida Start";
+UI.scanText.textContent = "Scan: gaida";
+UI.progress.textContent = "Spied “Start Screener”.";
 </script>
 </body>
 </html>
