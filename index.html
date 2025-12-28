@@ -22,12 +22,15 @@ body {
 #chart-wrapper {
   position: relative;
   flex: 1;
+  min-height: 60vh;
 }
 
 #chart {
   width: 100%;
   height: 100%;
 }
+
+/* ===== OVERLAYS ===== */
 
 .layer {
   position: absolute;
@@ -39,15 +42,15 @@ body {
   position: absolute;
   left: 5%;
   width: 90%;
-  top: 30%;
-  height: 18%;
+  height: 25%;
+  top: 25%;
   background: rgba(0,255,150,0.12);
   border: 2px solid rgba(0,255,150,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  letter-spacing: 4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:32px;
+  font-weight:bold;
   color: rgba(0,255,150,0.35);
 }
 
@@ -55,101 +58,149 @@ body {
   position: absolute;
   left: 15%;
   width: 70%;
-  top: 55%;
   height: 48px;
+  top: 60%;
   background: rgba(255,180,0,0.18);
   border: 2px solid rgba(255,180,0,0.7);
   border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  font-weight:bold;
   color: rgba(255,200,80,0.6);
 }
+
+.aggr-buy, .aggr-sell {
+  position:absolute;
+  left:10%;
+  width:80%;
+  height:40px;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
+
+.aggr-buy {
+  bottom:5%;
+  background: rgba(0,180,120,0.25);
+  border:2px solid rgba(0,180,120,0.7);
+}
+
+.aggr-sell {
+  top:5%;
+  background: rgba(180,40,40,0.25);
+  border:2px solid rgba(180,40,40,0.7);
+}
+
+/* ===== UI ===== */
 
 #panel {
   padding: 12px;
   border-top: 1px solid #1e2329;
-  font-size: 14px;
+  font-size:14px;
 }
 
+label { display:block; margin:6px 0; }
+input[type=range] { width:100%; }
+
 .status {
-  font-weight: bold;
+  font-weight:bold;
 }
-.ok { color: #0f0; }
-.warn { color: #ffa500; }
-.err { color: #f00; }
+.status.ok { color:#0f0; }
+.status.warn { color:#ff0; }
+.status.error { color:#f00; }
+
 </style>
 </head>
 
 <body>
 <div id="app">
 
-<div id="chart-wrapper">
-  <div id="chart"></div>
-  <div class="layer">
-    <div class="vacuum">VACUUM</div>
-    <div class="compress">COMPRESS</div>
+  <div id="chart-wrapper">
+    <div id="chart"></div>
+
+    <div class="layer">
+      <div class="aggr-sell">SELL AGGRESSION</div>
+      <div class="vacuum">VACUUM</div>
+      <div class="compress">COMPRESS</div>
+      <div class="aggr-buy">BUY AGGRESSION</div>
+    </div>
   </div>
+
+  <div id="panel">
+    <div><b>Metodikas</b></div>
+    Savienojums: <span class="status ok">CONNECTED</span><br>
+    Instruments: <b id="sym">BTCUSDT</b><br>
+    Timeframe: <b>15m</b><br>
+    Chart mode: <span id="chartMode" class="status warn">LOADING</span>
+
+    <hr>
+
+    <label><input type="checkbox" checked> Vacuum</label>
+    <label><input type="checkbox" checked> Compress</label>
+    <label><input type="checkbox" checked> Aggression</label>
+
+    <hr>
+
+    Vacuum pozīcija
+    <input type="range" min="0" max="100" value="25">
+
+    Vacuum augstums
+    <input type="range" min="10" max="60" value="25">
+
+    Compress pozīcija
+    <input type="range" min="0" max="100" value="60">
+
+    Compress biezums
+    <input type="range" min="20" max="80" value="48">
+
+    <hr>
+    Šī ir <b>forma / karkass</b>.  
+    Nākamais solis: <b>algoritms + datu plūsma + TOP-10</b>.
+  </div>
+
 </div>
 
-<div id="panel">
-  Instruments: <b id="sym">BTCUSDT</b><br>
-  Timeframe: <b>15m</b><br>
-  Chart mode: <span id="chartMode" class="status">LOADING</span>
-</div>
-
-</div>
-
+<!-- TradingView -->
 <script src="https://s3.tradingview.com/tv.js"></script>
-<script>
-const state = {
-  symbol: "BTCUSDT",
-  timeframe: "15",
-  container: "chart"
-};
 
-function loadTradingView(symbol, suffix, onFail){
-  document.getElementById(state.container).innerHTML = "";
+<script>
+const SYMBOL = "BTCUSDT";
+document.getElementById("sym").innerText = SYMBOL;
+
+function loadChart(){
   let loaded = false;
 
-  const widget = new TradingView.widget({
-    container_id: state.container,
+  new TradingView.widget({
+    container_id: "chart",
     autosize: true,
-    symbol: "BINANCE:" + symbol + suffix,
-    interval: state.timeframe,
+    symbol: "BINANCE:" + SYMBOL,
+    interval: "15",
     timezone: "Etc/UTC",
     theme: "dark",
     style: "1",
     hide_legend: true,
-    allow_symbol_change: true,
-    studies: [],
+    allow_symbol_change: false,
     onChartReady: () => {
       loaded = true;
-      document.getElementById("chartMode").innerText =
-        suffix === ".P" ? "FUTURES" : "SPOT";
-      document.getElementById("chartMode").className =
-        suffix === ".P" ? "status ok" : "status warn";
+      const cm = document.getElementById("chartMode");
+      cm.innerText = "SPOT";
+      cm.className = "status ok";
     }
   });
 
   setTimeout(() => {
-    if (!loaded && onFail) onFail();
-  }, 2500);
-}
-
-function loadChart(){
-  document.getElementById("chartMode").innerText = "LOADING";
-  document.getElementById("chartMode").className = "status";
-
-  loadTradingView(state.symbol, ".P", () => {
-    loadTradingView(state.symbol, "", () => {
+    if(!loaded){
       document.getElementById("chart").innerHTML =
-        "<div style='padding:20px;color:#f00'>No chart available</div>";
-      document.getElementById("chartMode").innerText = "NO CHART";
-      document.getElementById("chartMode").className = "status err";
-    });
-  });
+        "<div style='color:red;padding:20px'>No chart available</div>";
+      const cm = document.getElementById("chartMode");
+      cm.innerText = "NO CHART";
+      cm.className = "status error";
+    }
+  }, 6000);
 }
 
 loadChart();
