@@ -1,704 +1,937 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="lv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Super Breakout LIVE — Screener (Compress/Vacuum/Aggression)</title>
-
-  <!-- Lightweight Charts (TradingView open-source charting library) -->
-  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
-
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Super Breakout LIVE — Screener + Viewer (LOCKED Zones)</title>
   <style>
     :root{
-      --bg:#0b0e11; --panel:#0f141b; --line:#1e2329; --text:#cfd3dc; --muted:#8892a6;
-      --green:rgba(0,255,150,.18); --greenB:rgba(0,255,150,.65);
-      --amber:rgba(255,180,0,.18); --amberB:rgba(255,180,0,.75);
-      --red:rgba(255,80,80,.18); --redB:rgba(255,80,80,.75);
-      --chip:#141b24;
+      --bg:#0b0e11; --panel:#0f141a; --line:#1e2329; --text:#cfd3dc; --muted:#7b8494;
+      --good:#12b981; --warn:#f5c542; --bad:#f04444; --info:#6aa9ff;
+      --c1:#00ff96; --c2:#ffb400; --c3:#ff4d4d;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,system-ui,sans-serif}
-    #app{height:100vh;display:flex;flex-direction:column}
-    header{
-      display:flex;align-items:center;gap:10px;
-      padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    a{color:inherit}
+    .app{display:flex;flex-direction:column;height:100vh;min-height:100vh;}
+    .hdr{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 12px;border-bottom:1px solid var(--line);background:rgba(15,20,26,.92);backdrop-filter: blur(10px);
+      position:sticky;top:0;z-index:20;
     }
-    header .title{font-weight:700}
-    header .pill{
-      padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--chip);font-size:12px;color:var(--muted)
+    .hdr .left{display:flex;gap:10px;align-items:center;min-width:0}
+    .brand{font-weight:800;letter-spacing:.3px;white-space:nowrap}
+    .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw}
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.02)}
+    .dot{width:10px;height:10px;border-radius:50%;}
+    .dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+    .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .btn:active{transform:scale(.99)}
+    .select{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);padding:8px 10px;border-radius:10px}
+    .layout{display:flex;flex:1;min-height:0;gap:0}
+    .leftPane{border-right:1px solid var(--line);background:var(--panel);min-width:280px;max-width:520px;width:42vw;display:flex;flex-direction:column;min-height:0}
+    .rightPane{flex:1;display:flex;flex-direction:column;min-height:0}
+    @media (max-width: 840px){
+      .layout{flex-direction:column}
+      .leftPane{width:100%;max-width:none;border-right:none;border-bottom:1px solid var(--line);min-height:38vh}
+      .rightPane{min-height:62vh}
+      .sub{max-width:65vw}
     }
-    header .status{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
-    .dot{width:10px;height:10px;border-radius:50%}
-    .dot.ok{background:#2ecc71}
-    .dot.bad{background:#e74c3c}
-    .dot.warn{background:#f1c40f}
-
-    main{flex:1;display:flex;min-height:0}
-    #left{
-      width:380px;max-width:46vw;
-      border-right:1px solid var(--line);background:var(--panel);
-      display:flex;flex-direction:column;min-height:0;
+    .toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+    .search{flex:1;border:1px solid var(--line);background:rgba(0,0,0,.15);color:var(--text);padding:10px 12px;border-radius:12px;outline:none}
+    .hint{font-size:12px;color:var(--muted);padding:0 12px 10px}
+    .list{overflow:auto;flex:1;padding:6px 8px 12px}
+    .row{
+      border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);
+      border-radius:14px;padding:10px 10px;display:grid;grid-template-columns: 1fr auto;gap:10px;align-items:center;
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      margin:8px 4px;
+      cursor:pointer;
     }
-    #right{flex:1;display:flex;flex-direction:column;min-height:0}
-
-    .controls{padding:10px;border-bottom:1px solid var(--line);display:grid;gap:8px}
-    .row{display:flex;gap:8px;align-items:center}
-    input, select, button{
-      background:#0b0e11;color:var(--text);border:1px solid var(--line);border-radius:10px;
-      padding:10px 10px;font-size:14px;outline:none
-    }
-    input{flex:1}
-    button{cursor:pointer}
-    button.primary{border-color:#2b3645;background:#101a25}
-    button:disabled{opacity:.55;cursor:not-allowed}
-    .small{font-size:12px;color:var(--muted)}
-    .hint{font-size:12px;color:var(--muted);line-height:1.4}
-
-    #top10{flex:1;overflow:auto;padding:10px;display:grid;gap:10px}
-    .card{
-      border:1px solid var(--line);border-radius:14px;background:#0b0e11;
-      padding:10px;display:grid;gap:8px
-    }
-    .card .head{display:flex;gap:8px;align-items:center}
-    .sym{font-weight:800;letter-spacing:.5px}
-    .badge{
-      margin-left:auto;font-size:12px;padding:3px 8px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--muted)
-    }
-    .bar{
-      height:8px;border-radius:999px;background:#111823;border:1px solid var(--line);overflow:hidden
-    }
-    .bar > div{height:100%;width:0%}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-    .kv{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-    .kv b{color:var(--text);font-weight:700}
-
-    #chartWrap{position:relative;flex:1;min-height:0}
-    #chart{position:absolute;inset:0}
-    #overlayLegend{
-      position:absolute;left:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;z-index:5;
-      pointer-events:none
-    }
+    .row:hover{border-color:rgba(255,255,255,.12)}
+    .sym{font-weight:800;letter-spacing:.3px}
+    .meta{font-size:12px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
     .tag{
-      font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(15,20,27,.85);color:var(--muted)
+      display:inline-flex;align-items:center;gap:6px;
+      border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.20);
+      padding:5px 8px;border-radius:999px;font-size:12px;color:var(--text);white-space:nowrap
     }
-    .tag b{color:var(--text)}
-    #metrics{
-      border-top:1px solid var(--line);background:var(--panel);padding:10px;display:grid;gap:8px
+    .tag b{font-weight:800}
+    .tag.comp{border-color:rgba(255,180,0,.35);color:rgba(255,220,140,.95)}
+    .tag.vac{border-color:rgba(0,255,150,.35);color:rgba(170,255,220,.95)}
+    .tag.abs{border-color:rgba(255,77,77,.35);color:rgba(255,190,190,.95)}
+    .tag.ready{border-color:rgba(106,169,255,.40);color:rgba(200,225,255,.95)}
+    .tag.neu{border-color:rgba(255,255,255,.12);color:rgba(210,210,210,.85)}
+    .price{font-variant-numeric:tabular-nums;font-weight:700}
+    .small{font-size:12px;color:var(--muted)}
+    .viewerTop{
+      padding:10px 12px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between
     }
-    #metrics .h{font-weight:800}
-    .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{font-size:12px;padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--muted)}
-    .chip b{color:var(--text)}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .box{border:1px solid var(--line);border-radius:14px;background:#0b0e11;padding:10px;display:grid;gap:6px}
-    .box .t{font-weight:800}
-    .ok{color:#9be7c4}
-    .warn{color:#f5d76e}
-    .bad{color:#ff9a9a}
-
-    @media (max-width: 860px){
-      main{flex-direction:column}
-      #left{width:100%;max-width:none;height:44vh;border-right:none;border-bottom:1px solid var(--line)}
-      #right{height:56vh}
+    .viewerTop .title{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .viewerTop .title .h{font-weight:900;letter-spacing:.2px}
+    .viewerTop .title .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68vw}
+    .kpiBar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .kpi{border:1px solid var(--line);background:rgba(255,255,255,.02);padding:8px 10px;border-radius:12px;min-width:120px}
+    .kpi .k{font-size:11px;color:var(--muted)}
+    .kpi .v{font-size:14px;font-weight:850;margin-top:2px;font-variant-numeric:tabular-nums}
+    .chartWrap{position:relative;flex:1;min-height:0}
+    canvas{width:100%;height:100%;display:block}
+    .overlayLegend{
+      position:absolute;left:10px;top:10px;display:flex;gap:8px;flex-wrap:wrap;z-index:5
+    }
+    .chk{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.10);background:rgba(0,0,0,.25);
+      padding:8px 10px;border-radius:12px;font-size:12px
+    }
+    .chk input{accent-color: var(--info);}
+    .footer{
+      border-top:1px solid var(--line);background:rgba(15,20,26,.9);
+      padding:10px 12px;font-size:12px;color:var(--muted)
+    }
+    .warnBox{
+      margin:10px 12px; padding:10px 12px;border-radius:14px;
+      border:1px solid rgba(255,180,0,.22);background:rgba(255,180,0,.08);color:rgba(255,230,190,.95);
+    }
+    .okBox{
+      margin:10px 12px; padding:10px 12px;border-radius:14px;
+      border:1px solid rgba(0,255,150,.22);background:rgba(0,255,150,.08);color:rgba(200,255,235,.95);
     }
   </style>
 </head>
 
 <body>
-<div id="app">
-  <header>
-    <div class="title">Super Breakout LIVE — Screener</div>
-    <div class="pill">Compress · Vacuum · Aggression</div>
-    <div class="pill" id="universePill">Universe: Binance Futures (USDT-M)</div>
-
-    <div class="status">
-      <div class="dot warn" id="wsDot"></div>
-      <div id="wsText">Savienojums: inicializējas…</div>
-      <div class="pill" id="scanText">Scan: gaida</div>
+<div class="app">
+  <div class="hdr">
+    <div class="left">
+      <div class="brand">Super Breakout LIVE</div>
+      <div class="sub" id="subline">PREVIEW (WATCH) + Top10 — LOCKED zonas no klines</div>
     </div>
-  </header>
+    <div class="right">
+      <div class="pill" title="Binance Futures WebSocket statuss">
+        <span class="dot bad" id="wsDot"></span>
+        <span id="wsText" style="font-size:12px">Atvienots</span>
+        <span class="small" id="wsLag">—</span>
+      </div>
+      <select class="select" id="tfSel" title="Timeframe">
+        <option value="1m">1m</option>
+        <option value="3m">3m</option>
+        <option value="5m">5m</option>
+        <option value="15m" selected>15m</option>
+        <option value="30m">30m</option>
+        <option value="1h">1h</option>
+        <option value="4h">4h</option>
+      </select>
+      <button class="btn" id="btnTop10" title="Pārslēgt sarakstu režīmu">Top10</button>
+      <button class="btn" id="btnPreview" title="Pārslēgt sarakstu režīmu">Preview</button>
+    </div>
+  </div>
 
-  <main>
-    <section id="left">
-      <div class="controls">
-        <div class="row">
-          <input id="search" placeholder="Meklēt (piem. OP, ARB, PEPE)"/>
+  <div class="layout">
+    <div class="leftPane">
+      <div class="toolbar">
+        <input class="search" id="q" placeholder="Meklēt simbolu… (piem. SOL, WIF, ARB)" />
+      </div>
+      <div class="hint" id="hint">
+        PREVIEW: rāda visas monētas ar jebkādu struktūru (Compress / Vacuum / Absorbing / Ready).
+        Klikšķini, lai atvērtu grafiku ar LOCKED zonām.
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="rightPane">
+      <div class="viewerTop">
+        <div class="title">
+          <div class="h" id="vTitle">Atver kandidātu (ALT)</div>
+          <div class="s" id="vSub">Grafiks zīmē zonas tikai no screenera snapshot. TF/zoom vairs neizjauks robežas.</div>
         </div>
-
-        <div class="row">
-          <select id="tf">
-            <option value="15m" selected>15m</option>
-            <option value="30m">30m</option>
-            <option value="1h">1h</option>
-            <option value="4h">4h</option>
-          </select>
-          <select id="mode">
-            <option value="ALT" selected>ALT only (ieteikts)</option>
-            <option value="ALL">ALL USDT-M (neieteikts)</option>
-          </select>
-          <button class="primary" id="startBtn">Start Screener</button>
+        <div class="kpiBar">
+          <div class="kpi"><div class="k">Statuss</div><div class="v" id="kStatus">—</div></div>
+          <div class="kpi"><div class="k">Compress</div><div class="v" id="kCompress">—</div></div>
+          <div class="kpi"><div class="k">Vacuum</div><div class="v" id="kVacuum">—</div></div>
+          <div class="kpi"><div class="k">Aggression</div><div class="v" id="kAgg">—</div></div>
         </div>
-
-        <div class="row">
-          <button id="stopBtn" disabled>Stop</button>
-          <button id="refreshBtn" disabled>Pārrēķināt Top 10</button>
-        </div>
-
-        <div class="hint">
-          Šis ir analītisks rīks. Atlase notiek pēc 3 soļiem:
-          <b>Compress</b> → <b>Vacuum</b> → <b>Aggression</b>.
-          Rezultāts: <b>Top 10</b> kandidāti. Klikšķis uz kartītes atver detalizētu grafiku.
-        </div>
-
-        <div class="small" id="progress">—</div>
       </div>
 
-      <div id="top10"></div>
-    </section>
-
-    <section id="right">
-      <div id="chartWrap">
-        <div id="chart"></div>
-        <div id="overlayLegend"></div>
+      <div class="chartWrap" id="chartWrap">
+        <div class="overlayLegend">
+          <label class="chk"><input type="checkbox" id="togCompress" checked> Compress</label>
+          <label class="chk"><input type="checkbox" id="togVacuum" checked> Vacuum</label>
+          <label class="chk"><input type="checkbox" id="togAgg" checked> Aggression</label>
+        </div>
+        <canvas id="cv"></canvas>
       </div>
 
-      <div id="metrics">
-        <div class="h" id="selTitle">Nav izvēlēta monēta</div>
+      <div id="notice"></div>
 
-        <div class="chips">
-          <div class="chip">TF: <b id="tfOut">15m</b></div>
-          <div class="chip">Status: <b id="stOut">—</b></div>
-          <div class="chip">CK: <b id="ckOut">—</b></div>
-          <div class="chip">Vacuum%: <b id="vacOut">—</b></div>
-          <div class="chip">AggDist%: <b id="agOut">—</b></div>
-          <div class="chip">Score: <b id="scOut">—</b></div>
-        </div>
-
-        <div class="split">
-          <div class="box">
-            <div class="t">Compress (price-based)</div>
-            <div class="small">Diapazons: <b id="cRange">—</b></div>
-            <div class="small">Zona: <b id="cZone">—</b></div>
-          </div>
-          <div class="box">
-            <div class="t">Vacuum (price-based)</div>
-            <div class="small">Virziens: <b id="vDir">—</b></div>
-            <div class="small">Zona: <b id="vZone">—</b></div>
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="t">Aggression (price-based)</div>
-          <div class="small">Līmenis: <b id="aLevel">—</b></div>
-          <div class="small">Interpretācija: <span class="small">Aggression līmenis ir “degvielas siena” (aizsargāta zona), ne EMA.</span></div>
-        </div>
-
-        <div class="small">
-          Piezīme: algoritms ir “pragmatisks” (ātrai atlasei). Kad Top 10 strādā, mēs varam precizēt vakuuma/absorbcijas noteikumus.
-        </div>
+      <div class="footer">
+        Izglītojošs analīzes rīks. Nav izpildes, nav API key, nav orderu. Live dati: Binance Futures WebSocket.
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 </div>
 
 <script>
-/**
- * Super Breakout LIVE Screener (single-file)
- * - Data source: Binance Futures (USDT-M) public endpoints
- * - Screener logic: Compress -> Vacuum -> Aggression -> Score -> Top10
- * - Chart: Lightweight Charts (candles) + overlays (price-based bands/lines)
- *
- * IMPORTANT: This is an educational analysis tool (no trading execution).
- */
+/* =========================================================
+   SUPER BREAKOUT LIVE — Single-file build
+   - WS1: !markPrice@arr (universs + cenas)
+   - WS2: <symbol>@kline_<tf> (klines buffer izvēlētajam simbolam)
+   - Screener rēķina: Compress / Vacuum / Aggression / Absorbing / Ready
+   - Viewer zīmē tikai no LOCKED snapshot (price-based)
+========================================================= */
 
-const API = {
-  exchangeInfo: "https://fapi.binance.com/fapi/v1/exchangeInfo",
-  klines: (sym, interval, limit=200) =>
-    `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(sym)}&interval=${encodeURIComponent(interval)}&limit=${limit}`
-};
-
-const UI = {
-  wsDot: document.getElementById("wsDot"),
-  wsText: document.getElementById("wsText"),
-  scanText: document.getElementById("scanText"),
-  progress: document.getElementById("progress"),
-  top10: document.getElementById("top10"),
-  search: document.getElementById("search"),
-  tf: document.getElementById("tf"),
-  mode: document.getElementById("mode"),
-  startBtn: document.getElementById("startBtn"),
-  stopBtn: document.getElementById("stopBtn"),
-  refreshBtn: document.getElementById("refreshBtn"),
-
-  selTitle: document.getElementById("selTitle"),
-  tfOut: document.getElementById("tfOut"),
-  stOut: document.getElementById("stOut"),
-  ckOut: document.getElementById("ckOut"),
-  vacOut: document.getElementById("vacOut"),
-  agOut: document.getElementById("agOut"),
-  scOut: document.getElementById("scOut"),
-  cRange: document.getElementById("cRange"),
-  cZone: document.getElementById("cZone"),
-  vDir: document.getElementById("vDir"),
-  vZone: document.getElementById("vZone"),
-  aLevel: document.getElementById("aLevel"),
-  overlayLegend: document.getElementById("overlayLegend"),
-};
-
-let running = false;
-let universe = [];
-let top10 = [];
-let selected = null;
-
-// Chart
-const chartEl = document.getElementById("chart");
-const chart = LightweightCharts.createChart(chartEl, {
-  layout: { background: { color: "#0b0e11" }, textColor: "#cfd3dc" },
-  grid: { vertLines: { color: "#141b24" }, horzLines: { color: "#141b24" } },
-  rightPriceScale: { borderColor: "#1e2329" },
-  timeScale: { borderColor: "#1e2329", timeVisible: true, secondsVisible: false },
-  crosshair: { mode: 1 }
-});
-const candleSeries = chart.addCandlestickSeries({
-  upColor: "#2ecc71", downColor: "#e74c3c",
-  borderUpColor: "#2ecc71", borderDownColor: "#e74c3c",
-  wickUpColor: "#2ecc71", wickDownColor: "#e74c3c"
-});
-let overlayLines = []; // price lines
-function clearOverlays(){
-  overlayLines.forEach(pl => candleSeries.removePriceLine(pl));
-  overlayLines = [];
-  UI.overlayLegend.innerHTML = "";
-}
-function addTag(text){
-  const d = document.createElement("div");
-  d.className = "tag";
-  d.innerHTML = text;
-  UI.overlayLegend.appendChild(d);
-}
-function addPriceLine(price, title, color){
-  const pl = candleSeries.createPriceLine({
-    price,
-    color,
-    lineWidth: 2,
-    lineStyle: LightweightCharts.LineStyle.Solid,
-    axisLabelVisible: true,
-    title
-  });
-  overlayLines.push(pl);
-  return pl;
-}
-
-// Utils
-const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
-const fmt = (n, d=2)=> (Number.isFinite(n)? n.toFixed(d) : "—");
-const pct = (n, d=2)=> (Number.isFinite(n)? (n*100).toFixed(d)+"%" : "—");
-
-function isMajor(sym){
-  const majors = ["BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT","ADAUSDT","AVAXUSDT","DOTUSDT","DOGEUSDT","TRXUSDT","LINKUSDT","MATICUSDT"];
-  return majors.includes(sym);
-}
-function intervalToBinance(tf){
-  // UI uses 15m/30m/1h/4h already matches Binance
-  return tf;
-}
-function klineToCandle(k){
-  return {
-    time: Math.floor(k[0]/1000),
-    open: parseFloat(k[1]),
-    high: parseFloat(k[2]),
-    low:  parseFloat(k[3]),
-    close:parseFloat(k[4]),
-    volume: parseFloat(k[5])
+(() => {
+  // ---------- Config ----------
+  const WS_MARK = "wss://fstream.binance.com/ws/!markPrice@arr";
+  const WS_BASE = "wss://fstream.binance.com/ws/";
+  const MAX_LIST = 220;         // UI ierobežojums (lai nebremzē telefonu)
+  const KLINE_LIMIT = 300;      // buffer sveces
+  const RANGE_N = 24;           // compress range lookback
+  const ATR_N = 14;
+  const VAC_LOOKBACK = 80;      // vacuum skenēšana
+  const AGG_LOOKBACK = 60;      // aggression skenēšana
+  const PRICE_FMT = (x) => {
+    if (!isFinite(x)) return "—";
+    if (x >= 1000) return x.toFixed(2);
+    if (x >= 100) return x.toFixed(3);
+    if (x >= 1) return x.toFixed(4);
+    return x.toFixed(6);
   };
-}
 
-/**
- * CORE metrics (pragmatic):
- * Compress:
- *  - CurrentRange over last N candles
- *  - NormalRange = median(high-low) over M candles (older window)
- *  - CK = NormalRange / (CurrentRange/N) OR NormalRange / AvgRangeNow
- *
- * Vacuum (pragmatic):
- *  - Find the strongest impulse in last K candles (by |close-open| * volumeFactor)
- *  - Determine move from base->top (up) or top->base (down) over short window
- *  - Vacuum% = |move| / lastClose
- *  - Vacuum zone = [min(base,top), max(base,top)]
- *  - Direction = UP if impulse up and zone above current price OR price inside zone
- *
- * Aggression (pragmatic):
- *  - Aggression level = protective level near impulse origin:
- *    - If impulse up: level = impulse candle low (support)
- *    - If impulse down: level = impulse candle high (resistance)
- *  - AggDist% = |lastClose - level|/lastClose
- */
-function median(arr){
-  if(!arr.length) return NaN;
-  const a=[...arr].sort((x,y)=>x-y);
-  const m=Math.floor(a.length/2);
-  return a.length%2? a[m] : (a[m-1]+a[m])/2;
-}
+  // ---------- UI ----------
+  const els = {
+    list: document.getElementById("list"),
+    q: document.getElementById("q"),
+    tfSel: document.getElementById("tfSel"),
+    btnTop10: document.getElementById("btnTop10"),
+    btnPreview: document.getElementById("btnPreview"),
+    wsDot: document.getElementById("wsDot"),
+    wsText: document.getElementById("wsText"),
+    wsLag: document.getElementById("wsLag"),
+    vTitle: document.getElementById("vTitle"),
+    vSub: document.getElementById("vSub"),
+    kStatus: document.getElementById("kStatus"),
+    kCompress: document.getElementById("kCompress"),
+    kVacuum: document.getElementById("kVacuum"),
+    kAgg: document.getElementById("kAgg"),
+    notice: document.getElementById("notice"),
+    cv: document.getElementById("cv"),
+    togCompress: document.getElementById("togCompress"),
+    togVacuum: document.getElementById("togVacuum"),
+    togAgg: document.getElementById("togAgg"),
+  };
 
-function analyzeSymbol(candles){
-  if(!candles || candles.length < 120) return null;
+  // ---------- State ----------
+  let mode = "PREVIEW"; // PREVIEW | TOP10
+  let tf = els.tfSel.value;     // default 15m
+  let selectedSymbol = null;
 
-  const last = candles[candles.length-1];
-  const lastClose = last.close;
+  // prices: symbol-> markPrice (string->number)
+  const live = {
+    prices: new Map(),
+    lastMarkUpdate: 0,
+    conn: { state:"DISCONNECTED", lagMs: null }
+  };
 
-  // ---- Compress
-  const N = 40;
-  const M = Math.min(200, candles.length);
-  const recent = candles.slice(-N);
-  const base = candles.slice(-M);
+  // Zone snapshots (LOCKED): symbol -> snapshot
+  const snapshots = new Map();
 
-  const currentHigh = Math.max(...recent.map(c=>c.high));
-  const currentLow  = Math.min(...recent.map(c=>c.low));
-  const currentRange = Math.max(1e-12, currentHigh - currentLow);
+  // Kline buffer for selected symbol
+  let klineWS = null;
+  let klines = []; // {t,o,h,l,c,v, T}
+  let lastKlineClose = null;
 
-  const ranges = base.map(c=>Math.max(1e-12, c.high-c.low));
-  const normalRange = median(ranges); // typical candle range
-  const avgRecentRange = recent.reduce((s,c)=>s+(c.high-c.low),0)/recent.length;
+  // Canvas chart
+  const ctx = els.cv.getContext("2d", { alpha: false });
+  const DPR = () => Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  function resizeCanvas(){
+    const dpr = DPR();
+    const rect = els.cv.getBoundingClientRect();
+    els.cv.width = Math.floor(rect.width * dpr);
+    els.cv.height = Math.floor(rect.height * dpr);
+  }
+  window.addEventListener("resize", () => { resizeCanvas(); draw(); });
+  resizeCanvas();
 
-  const CK = normalRange / Math.max(1e-12, avgRecentRange); // higher = more compressed
+  // ---------- WebSocket: MARK PRICE ----------
+  let markWS = null;
+  let markRetry = 0;
+  function setConn(state, lagMs){
+    live.conn.state = state;
+    live.conn.lagMs = lagMs;
+    if (state === "CONNECTED"){
+      els.wsDot.className = "dot good";
+      els.wsText.textContent = "Savienots";
+    } else if (state === "DEGRADED"){
+      els.wsDot.className = "dot warn";
+      els.wsText.textContent = "Pasliktināts";
+    } else {
+      els.wsDot.className = "dot bad";
+      els.wsText.textContent = "Atvienots";
+    }
+    els.wsLag.textContent = lagMs != null ? (lagMs + "ms") : "—";
+  }
 
-  // ---- Impulse scan (for Vacuum + Aggression)
-  const K = 120;
-  const window = candles.slice(-K);
-  let best = {score:-Infinity, idx:-1, dir:0};
-  for(let i=0;i<window.length;i++){
-    const c = window[i];
-    const body = Math.abs(c.close - c.open);
-    const range = Math.max(1e-12, c.high - c.low);
-    const bodyRatio = body / range; // 0..1
-    const vol = Math.max(1e-12, c.volume);
-    const score = body * (0.6 + 0.4*bodyRatio) * Math.log10(1+vol);
-    const dir = (c.close >= c.open) ? 1 : -1;
-    if(score > best.score){
-      best = {score, idx:i, dir};
+  function connectMark(){
+    try { if (markWS) markWS.close(); } catch(_) {}
+    setConn("DISCONNECTED", null);
+
+    markWS = new WebSocket(WS_MARK);
+    let lastMsgAt = 0;
+
+    markWS.onopen = () => {
+      markRetry = 0;
+      setConn("CONNECTED", 0);
+    };
+
+    markWS.onmessage = (ev) => {
+      lastMsgAt = Date.now();
+      live.lastMarkUpdate = lastMsgAt;
+      const t0 = performance.now();
+      let arr = null;
+      try { arr = JSON.parse(ev.data); } catch(e){ return; }
+      if (!Array.isArray(arr)) return;
+
+      for (const it of arr){
+        const sym = it.s; // BTCUSDT
+        const mp = Number(it.p); // mark price
+        if (!sym || !isFinite(mp)) continue;
+        live.prices.set(sym, mp);
+      }
+
+      // connection quality
+      const dt = Date.now() - lastMsgAt;
+      const lag = Math.max(0, Math.round(performance.now() - t0));
+      if (dt > 2500) setConn("DEGRADED", lag);
+      else setConn("CONNECTED", lag);
+
+      // refresh list UI (throttle)
+      scheduleRenderList();
+    };
+
+    markWS.onclose = () => {
+      setConn("DISCONNECTED", null);
+      retryMark();
+    };
+    markWS.onerror = () => {
+      setConn("DISCONNECTED", null);
+      try{ markWS.close(); } catch(_){}
+      retryMark();
+    };
+  }
+
+  function retryMark(){
+    const wait = Math.min(30000, Math.pow(2, markRetry) * 1000);
+    markRetry++;
+    setTimeout(connectMark, wait);
+  }
+
+  // ---------- WebSocket: KLINES for selected symbol ----------
+  function closeKlineWS(){
+    if (klineWS){
+      try { klineWS.close(); } catch(_) {}
+      klineWS = null;
     }
   }
-  if(best.idx < 5) return null;
 
-  const imp = window[best.idx];
-  const impPriceRef = (best.dir>0) ? imp.low : imp.high; // aggression protective level
+  function connectKlines(symbol, timeframe){
+    closeKlineWS();
+    klines = [];
+    lastKlineClose = null;
 
-  // define move window around impulse: from (idx-3) to (idx+3) clamped
-  const s = Math.max(0, best.idx-3);
-  const e = Math.min(window.length-1, best.idx+3);
-  const seg = window.slice(s, e+1);
+    const stream = `${symbol.toLowerCase()}@kline_${timeframe}`;
+    const url = WS_BASE + stream;
 
-  const segLow = Math.min(...seg.map(c=>c.low));
-  const segHigh = Math.max(...seg.map(c=>c.high));
-  const move = segHigh - segLow;
+    klineWS = new WebSocket(url);
 
-  // Vacuum zone: from segLow to segHigh
-  // But direction depends on impulse dir & relative position to current price
-  let vacuumDir = best.dir>0 ? "UP" : "DOWN";
-  let vFrom = segLow;
-  let vTo = segHigh;
-  const vacuumPct = move / Math.max(1e-12, lastClose);
+    klineWS.onopen = () => {
+      // ok
+    };
 
-  // Aggression distance
-  const agDist = Math.abs(lastClose - impPriceRef) / Math.max(1e-12, lastClose);
+    klineWS.onmessage = (ev) => {
+      let msg = null;
+      try { msg = JSON.parse(ev.data); } catch(e){ return; }
+      if (!msg || !msg.k) return;
 
-  // Status (very pragmatic)
-  // If CK high => Compress
-  // If price breaks out beyond recent range => Release
-  // If inside vacuum and volume falling => Absorption (heuristic)
-  let status = "Neutral";
-  if(CK >= 2.8) status = "Compress";
-  if(lastClose > currentHigh || lastClose < currentLow) status = "Release";
+      const k = msg.k;
+      const candle = {
+        t: Number(k.t),
+        T: Number(k.T),
+        o: Number(k.o),
+        h: Number(k.h),
+        l: Number(k.l),
+        c: Number(k.c),
+        v: Number(k.v),
+        x: Boolean(k.x)
+      };
 
-  // Score (locked weights)
-  // Normalize to 0..1 with pragmatic caps
-  const ckN = Math.min(CK/6.0, 1);            // CK cap at ~6
-  const vN  = Math.min(vacuumPct/0.25, 1);    // 25% cap
-  const agN = Math.max(0, 1 - (agDist/0.08)); // best if within 8%
-  const score = 0.40*ckN + 0.40*vN + 0.20*agN;
+      if (!isFinite(candle.o) || !isFinite(candle.c)) return;
 
-  return {
-    lastClose,
-    CK,
-    compress: {low: currentLow, high: currentHigh, range: currentRange},
-    vacuum: {from: vFrom, to: vTo, pct: vacuumPct, dir: vacuumDir},
-    aggression: {level: impPriceRef, dist: agDist, dir: best.dir>0?"BULL":"BEAR"},
-    status,
-    score
-  };
-}
-
-function scoreColor(score){
-  if(score >= 0.72) return "#2ecc71";
-  if(score >= 0.52) return "#f1c40f";
-  return "#e74c3c";
-}
-
-function createCard(item){
-  const d = document.createElement("div");
-  d.className = "card";
-  const sPct = Math.round(item.score*100);
-  const barColor = scoreColor(item.score);
-
-  d.innerHTML = `
-    <div class="head">
-      <div class="sym">${item.symbol}</div>
-      <div class="badge">SCORE ${sPct}%</div>
-    </div>
-
-    <div class="bar"><div style="width:${sPct}%; background:${barColor};"></div></div>
-
-    <div class="grid2">
-      <div class="kv"><span>CK</span><b>${fmt(item.CK,2)}</b></div>
-      <div class="kv"><span>Vacuum</span><b>${(item.vacuumPct*100).toFixed(1)}%</b></div>
-      <div class="kv"><span>AggDist</span><b>${(item.agDist*100).toFixed(1)}%</b></div>
-      <div class="kv"><span>Status</span><b>${item.status}</b></div>
-    </div>
-
-    <div class="small">Klikšķini, lai atvērtu grafiku ar zonām.</div>
-  `;
-
-  d.addEventListener("click", ()=> selectSymbol(item.symbol, item.tf));
-  return d;
-}
-
-function renderTop10(list){
-  UI.top10.innerHTML = "";
-  const q = (UI.search.value || "").trim().toUpperCase();
-  const filtered = q ? list.filter(x=>x.symbol.includes(q)) : list;
-
-  filtered.forEach(it=>{
-    UI.top10.appendChild(createCard(it));
-  });
-
-  if(!filtered.length){
-    const d = document.createElement("div");
-    d.className = "small";
-    d.style.padding = "10px";
-    d.textContent = "Nav rezultātu (pamēģini citu meklēšanu vai pārrēķinu).";
-    UI.top10.appendChild(d);
-  }
-}
-
-async function fetchUniverse(){
-  UI.progress.textContent = "Ielādē Binance Futures simbolus…";
-  const r = await fetch(API.exchangeInfo);
-  if(!r.ok) throw new Error("exchangeInfo fetch failed");
-  const data = await r.json();
-
-  // USDT-M perpetual, trading
-  let syms = data.symbols
-    .filter(s => s.contractType === "PERPETUAL" && s.quoteAsset === "USDT" && s.status === "TRADING")
-    .map(s => s.symbol);
-
-  // Remove stable-ish or majors based on mode
-  const mode = UI.mode.value;
-  if(mode === "ALT"){
-    syms = syms.filter(s => !isMajor(s));
-  }
-
-  universe = syms;
-  UI.progress.textContent = `Universe: ${universe.length} simboli.`;
-}
-
-async function scanOnce(){
-  const tf = intervalToBinance(UI.tf.value);
-  const total = universe.length;
-
-  const results = [];
-  let done = 0;
-  UI.scanText.textContent = "Scan: darbojas";
-  UI.refreshBtn.disabled = true;
-
-  // Batch scanning to avoid hammering API; still heavy if universe huge.
-  // Practical: scan in batches and keep Top10 updated.
-  const batchSize = 18;
-  for(let i=0; i<total && running; i+=batchSize){
-    const batch = universe.slice(i, i+batchSize);
-
-    // fetch klines in parallel for batch
-    const promises = batch.map(async sym=>{
-      try{
-        const url = API.klines(sym, tf, 220);
-        const res = await fetch(url);
-        if(!res.ok) return null;
-        const raw = await res.json();
-        const candles = raw.map(klineToCandle);
-
-        const a = analyzeSymbol(candles);
-        if(!a) return null;
-
-        // HARD FILTERS (locked): Compress -> Vacuum -> Aggression proximity
-        // Compress: CK >= 2.8
-        // Vacuum: >= 8%
-        // Aggression distance: <= 10%
-        if(a.CK < 2.8) return null;
-        if(a.vacuum.pct < 0.08) return null;
-        if(a.aggression.dist > 0.10) return null;
-
-        return {
-          symbol: sym,
-          tf,
-          score: a.score,
-          CK: a.CK,
-          vacuumPct: a.vacuum.pct,
-          agDist: a.aggression.dist,
-          status: a.status
-        };
-      }catch(e){
-        return null;
+      // maintain buffer by start time
+      const last = klines[klines.length - 1];
+      if (last && last.t === candle.t){
+        klines[klines.length - 1] = candle;
+      } else {
+        klines.push(candle);
+        if (klines.length > KLINE_LIMIT) klines.shift();
       }
+
+      lastKlineClose = candle.c;
+
+      // Recompute snapshot for this symbol (LOCKED zones update only from klines stream)
+      computeAndStoreSnapshot(symbol, timeframe, klines);
+
+      // draw
+      draw();
+      scheduleRenderList();
+    };
+
+    klineWS.onclose = () => {
+      // if still selected, auto-reconnect quickly
+      if (selectedSymbol === symbol){
+        setTimeout(() => connectKlines(symbol, timeframe), 800);
+      }
+    };
+    klineWS.onerror = () => {
+      try{ klineWS.close(); } catch(_){}
+    };
+  }
+
+  // ---------- Indicators ----------
+  function clip01(x){ return Math.max(0, Math.min(1, x)); }
+  function pct(x){ return Math.round(clip01(x) * 100); }
+
+  function trueRange(cur, prevClose){
+    const a = cur.h - cur.l;
+    const b = Math.abs(cur.h - prevClose);
+    const c = Math.abs(cur.l - prevClose);
+    return Math.max(a,b,c);
+  }
+
+  function calcATR(candles, n){
+    if (candles.length < n + 1) return null;
+    let sum = 0;
+    for (let i = candles.length - n; i < candles.length; i++){
+      const cur = candles[i];
+      const prev = candles[i-1];
+      const tr = trueRange(cur, prev.c);
+      sum += tr;
+    }
+    return sum / n;
+  }
+
+  function calcCompress(candles){
+    if (candles.length < Math.max(RANGE_N, ATR_N) + 2) return null;
+    const atr = calcATR(candles, ATR_N);
+    if (!atr || !isFinite(atr) || atr <= 0) return null;
+
+    const seg = candles.slice(-RANGE_N);
+    let hi = -Infinity, lo = Infinity;
+    for (const c of seg){ hi = Math.max(hi, c.h); lo = Math.min(lo, c.l); }
+    const range = hi - lo;
+
+    // compressCapacity: atr*mult - range (mult=3)
+    const mult = 3.0;
+    const cap = atr * mult;
+    const strength = clip01((cap - range) / cap); // 1 = very compressed
+    return {
+      low: lo,
+      high: hi,
+      strengthPct: pct(strength),
+      atr
+    };
+  }
+
+  function calcVacuum(candles){
+    if (candles.length < 10) return null;
+
+    // FVG style: gap between candle i-2 high and candle i low (up) or i-2 low and candle i high (down)
+    const start = Math.max(2, candles.length - VAC_LOOKBACK);
+    let best = null;
+
+    for (let i = start; i < candles.length; i++){
+      const c0 = candles[i-2];
+      const c2 = candles[i];
+      if (!c0 || !c2) continue;
+
+      // Up gap
+      if (c2.l > c0.h){
+        const low = c0.h;
+        const high = c2.l;
+        const gap = high - low;
+        if (gap > 0){
+          const midPrice = candles[candles.length - 1].c || c2.c;
+          const gapPct = Math.min(100, Math.round((gap / midPrice) * 100 * 8)); // scale factor
+          const cand = { low, high, direction:"UP", strengthPct: gapPct };
+          if (!best || cand.strengthPct > best.strengthPct) best = cand;
+        }
+      }
+
+      // Down gap
+      if (c2.h < c0.l){
+        const high = c0.l;
+        const low = c2.h;
+        const gap = high - low;
+        if (gap > 0){
+          const midPrice = candles[candles.length - 1].c || c2.c;
+          const gapPct = Math.min(100, Math.round((gap / midPrice) * 100 * 8));
+          const cand = { low, high, direction:"DOWN", strengthPct: gapPct };
+          if (!best || cand.strengthPct > best.strengthPct) best = cand;
+        }
+      }
+    }
+
+    if (!best) return null;
+    return best;
+  }
+
+  function mean(arr){ return arr.reduce((a,b)=>a+b,0)/Math.max(1,arr.length); }
+  function std(arr){
+    if (arr.length < 2) return 0;
+    const m = mean(arr);
+    const v = mean(arr.map(x => (x-m)*(x-m)));
+    return Math.sqrt(v);
+  }
+
+  function calcAggression(candles){
+    if (candles.length < 30) return null;
+    const seg = candles.slice(-AGG_LOOKBACK);
+    const vols = seg.map(c => c.v).filter(v => isFinite(v));
+    const m = mean(vols);
+    const s = std(vols) || 1;
+
+    let best = null;
+
+    for (const c of seg){
+      const body = Math.abs(c.c - c.o);
+      const rng = Math.max(1e-9, (c.h - c.l));
+      const bodyRatio = body / rng;
+      const z = (c.v - m) / s;
+
+      // Strong candle proxy
+      if (z > 1.4 && bodyRatio > 0.55){
+        const side = c.c >= c.o ? "BUY" : "SELL";
+        const level = (c.o + c.c) / 2; // mid body = wall area
+        const strength = clip01((z - 1.4) / 2.8); // map z to 0..1
+        const cand = { side, level, strengthPct: pct(strength), z, bodyRatio };
+        if (!best || cand.strengthPct > best.strengthPct) best = cand;
+      }
+    }
+    return best;
+  }
+
+  function calcAbsorbing(candles, agg){
+    if (!agg || agg.strengthPct < 55 || candles.length < 20) return false;
+    const seg = candles.slice(-12);
+    const first = seg[0].c;
+    const last = seg[seg.length - 1].c;
+    const movePct = Math.abs((last - first) / first) * 100;
+    return movePct < 1.2; // high aggression but price stuck
+  }
+
+  function decideStatus(comp, vac, agg, absorbing){
+    // Dominant status + % (LOCKED)
+    const c = comp ? comp.strengthPct : 0;
+    const v = vac ? vac.strengthPct : 0;
+    const a = agg ? agg.strengthPct : 0;
+
+    if (absorbing) return { label: "ABSORBING", pct: Math.max(55, a) };
+    if (c >= 55) return { label: "COMPRESS", pct: c };
+    if (v >= 40) return { label: "VACUUM", pct: v };
+
+    // READY: partial alignment
+    if (c >= 45 && v >= 25 && a >= 40) return { label: "READY", pct: Math.round((c + v + a)/3) };
+
+    // RELOAD: after impulse + new compression-ish
+    if (candlesPctMove(klines, 20) >= 8 && c >= 35) return { label: "RELOAD", pct: Math.max(c, 45) };
+
+    return { label: "NEUTRAL", pct: Math.max(c, v, a) };
+  }
+
+  function candlesPctMove(candles, n){
+    if (candles.length < n + 2) return 0;
+    const seg = candles.slice(-n);
+    const first = seg[0].c, last = seg[seg.length-1].c;
+    if (!isFinite(first) || first <= 0) return 0;
+    return Math.abs((last-first)/first)*100;
+  }
+
+  function readinessScore(comp, vac, agg, absorbing){
+    // Not "signal". Used only for TOP10 sorting.
+    const c = comp ? comp.strengthPct : 0;
+    const v = vac ? vac.strengthPct : 0;
+    const a = agg ? agg.strengthPct : 0;
+    const absPenalty = absorbing ? 0.65 : 1.0;
+    const score = (0.40*v + 0.35*c + 0.25*a) * absPenalty;
+    return Math.round(score);
+  }
+
+  function computeAndStoreSnapshot(symbol, timeframe, candles){
+    if (!candles || candles.length < 30) return;
+
+    const comp = calcCompress(candles);
+    const vac  = calcVacuum(candles);
+    const agg  = calcAggression(candles);
+    const absorbing = calcAbsorbing(candles, agg);
+
+    const status = (() => {
+      const c = comp ? comp.strengthPct : 0;
+      const v = vac ? vac.strengthPct : 0;
+      const a = agg ? agg.strengthPct : 0;
+      if (absorbing) return { label:"ABSORBING", pct: Math.max(55, a) };
+      if (c >= 55) return { label:"COMPRESS", pct:c };
+      if (v >= 40) return { label:"VACUUM", pct:v };
+      if (c >= 45 && v >= 25 && a >= 40) return { label:"READY", pct: Math.round((c+v+a)/3) };
+      if (candlesPctMove(candles, 20) >= 8 && c >= 35) return { label:"RELOAD", pct: Math.max(c,45) };
+      return { label:"NEUTRAL", pct: Math.max(c,v,a) };
+    })();
+
+    const score = readinessScore(comp, vac, agg, absorbing);
+
+    const snap = {
+      symbol,
+      tf: timeframe,
+      ts: Date.now(),
+      status,
+      compress: comp ? { low: comp.low, high: comp.high, strengthPct: comp.strengthPct } : null,
+      vacuum: vac ? { low: vac.low, high: vac.high, strengthPct: vac.strengthPct, direction: vac.direction } : null,
+      aggression: agg ? { level: agg.level, side: agg.side, strengthPct: agg.strengthPct } : null,
+      absorbing,
+      score
+    };
+
+    snapshots.set(symbol, snap);
+
+    // If viewer open on this symbol, update KPIs
+    if (selectedSymbol === symbol){
+      updateViewerKPIs(snap);
+      // notice if snapshot missing zones
+      renderNotice(snap);
+    }
+  }
+
+  // ---------- Rendering: List ----------
+  let listRenderScheduled = false;
+  function scheduleRenderList(){
+    if (listRenderScheduled) return;
+    listRenderScheduled = true;
+    requestAnimationFrame(() => {
+      listRenderScheduled = false;
+      renderList();
     });
-
-    const batchRes = await Promise.all(promises);
-    batchRes.filter(Boolean).forEach(x=>results.push(x));
-
-    done = Math.min(total, i+batchSize);
-    UI.progress.textContent = `Scan progress: ${done}/${total} (TF ${tf}) | Kandidāti: ${results.length}`;
-
-    // Update Top10 preview on the fly
-    results.sort((a,b)=>b.score-a.score);
-    top10 = results.slice(0,10);
-    renderTop10(top10);
-
-    // Respect rate limits
-    await sleep(250);
   }
 
-  // Finalize
-  results.sort((a,b)=>b.score-a.score);
-  top10 = results.slice(0,10);
-  renderTop10(top10);
-
-  UI.scanText.textContent = "Scan: pabeigts";
-  UI.refreshBtn.disabled = false;
-}
-
-async function start(){
-  if(running) return;
-  running = true;
-  UI.startBtn.disabled = true;
-  UI.stopBtn.disabled = false;
-  UI.refreshBtn.disabled = true;
-
-  UI.wsDot.className = "dot ok";
-  UI.wsText.textContent = "Savienojums: LIVE (REST klines + live screener)";
-
-  try{
-    await fetchUniverse();
-    await scanOnce();
-  }catch(e){
-    UI.wsDot.className = "dot bad";
-    UI.wsText.textContent = "Savienojums: kļūda";
-    UI.progress.textContent = "Kļūda: " + (e?.message || String(e));
-  }finally{
-    UI.startBtn.disabled = false;
-    UI.stopBtn.disabled = true;
-    UI.refreshBtn.disabled = false;
-    running = false;
+  function tagClass(label){
+    if (label === "COMPRESS") return "comp";
+    if (label === "VACUUM") return "vac";
+    if (label === "ABSORBING") return "abs";
+    if (label === "READY" || label === "RELOAD") return "ready";
+    return "neu";
   }
-}
 
-function stop(){
-  running = false;
-  UI.scanText.textContent = "Scan: apturēts";
-  UI.progress.textContent = "Apturēts.";
-  UI.startBtn.disabled = false;
-  UI.stopBtn.disabled = true;
-  UI.refreshBtn.disabled = false;
-}
+  function renderList(){
+    const query = (els.q.value || "").trim().toUpperCase();
 
-async function refresh(){
-  if(running) return;
-  running = true;
-  UI.refreshBtn.disabled = true;
-  UI.startBtn.disabled = true;
-  UI.stopBtn.disabled = false;
-  try{
-    await scanOnce();
-  }finally{
-    running = false;
-    UI.refreshBtn.disabled = false;
-    UI.startBtn.disabled = false;
-    UI.stopBtn.disabled = true;
+    // Build candidates from prices map (universe) + snapshot presence rules
+    // PREVIEW: show those with any non-neutral status or pct >= 35
+    // TOP10: rank by score, show top 10
+    const items = [];
+    for (const [sym, price] of live.prices){
+      if (!sym.endsWith("USDT")) continue; // Binance USDT-M futures universe
+      if (query && !sym.includes(query)) continue;
+
+      const snap = snapshots.get(sym);
+      // allow showing even without snapshot, but mark as "SCAN" until clicked
+      if (mode === "PREVIEW"){
+        if (!snap){
+          // show only a limited set without snapshot (performance)
+          // prioritize by price update availability only
+          // We'll include but clamp total list size by MAX_LIST.
+          items.push({ sym, price, snap: null });
+        } else {
+          const pct = snap.status?.pct ?? 0;
+          const lbl = snap.status?.label ?? "NEUTRAL";
+          if (lbl !== "NEUTRAL" || pct >= 35){
+            items.push({ sym, price, snap });
+          }
+        }
+      } else { // TOP10
+        if (snap){
+          items.push({ sym, price, snap });
+        }
+      }
+      if (items.length > MAX_LIST) break;
+    }
+
+    if (mode === "TOP10"){
+      items.sort((a,b) => (b.snap?.score ?? 0) - (a.snap?.score ?? 0));
+      items.length = Math.min(10, items.length);
+    } else {
+      // PREVIEW: sort by status pct desc, then by whether snapshot exists
+      items.sort((a,b) => {
+        const ap = a.snap ? (a.snap.status?.pct ?? 0) : 10;
+        const bp = b.snap ? (b.snap.status?.pct ?? 0) : 10;
+        if (bp !== ap) return bp - ap;
+        const as = a.snap ? 1 : 0;
+        const bs = b.snap ? 1 : 0;
+        return bs - as;
+      });
+    }
+
+    // render
+    els.list.innerHTML = "";
+    for (const it of items){
+      const snap = it.snap;
+      const status = snap ? snap.status : { label: "SCAN", pct: 0 };
+      const cls = tagClass(status.label);
+
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div>
+          <div class="sym">${it.sym}</div>
+          <div class="meta">
+            <span class="price">${PRICE_FMT(it.price)}</span>
+            <span class="tag ${cls}"><b>${status.label}</b> ${status.pct ? status.pct + "%" : ""}</span>
+            ${snap ? `<span class="small">score ${snap.score}</span>` : `<span class="small">nav klines (klikšķini)</span>`}
+          </div>
+        </div>
+        <div class="small" style="text-align:right;line-height:1.2">
+          ${snap?.compress ? `C ${snap.compress.strengthPct}%` : "C —"}<br>
+          ${snap?.vacuum ? `V ${snap.vacuum.strengthPct}%` : "V —"}<br>
+          ${snap?.aggression ? `A ${snap.aggression.strengthPct}%` : "A —"}
+        </div>
+      `;
+      row.onclick = () => selectSymbol(it.sym);
+      els.list.appendChild(row);
+    }
+
+    if (!items.length){
+      const empty = document.createElement("div");
+      empty.className = "warnBox";
+      empty.textContent = "Nav rezultātu. Pārbaudi meklēšanu vai pagaidīsim, lai savācas live dati.";
+      els.list.appendChild(empty);
+    }
   }
-}
 
-async function selectSymbol(sym, tf){
-  selected = {sym, tf};
-  UI.selTitle.textContent = `Grafiks: ${sym}`;
-  UI.tfOut.textContent = tf;
-  clearOverlays();
+  // ---------- Viewer ----------
+  function renderNotice(snap){
+    const missing = [];
+    if (!snap) return;
 
-  UI.progress.textContent = `Ielādē grafiku: ${sym} (${tf})…`;
+    if (!snap.compress) missing.push("Compress");
+    if (!snap.vacuum) missing.push("Vacuum");
+    if (!snap.aggression) missing.push("Aggression");
 
-  try{
-    const res = await fetch(API.klines(sym, tf, 300));
-    if(!res.ok) throw new Error("klines fetch failed");
-    const raw = await res.json();
-    const candles = raw.map(klineToCandle);
+    if (!snap || !klines.length){
+      els.notice.innerHTML = `<div class="warnBox">Nav klines bufera. Pagaidi dažas sekundes (LIVE).</div>`;
+      return;
+    }
 
-    candleSeries.setData(candles);
+    if (missing.length === 3){
+      els.notice.innerHTML = `<div class="warnBox">Šim simbolam šobrīd nav izteiktas struktūras. Tas ir OK (NEUTRAL).</div>`;
+      return;
+    }
 
-    const a = analyzeSymbol(candles);
-    if(!a) throw new Error("insufficient data for analysis");
-
-    // Update metrics
-    UI.stOut.textContent = a.status;
-    UI.ckOut.textContent = fmt(a.CK,2);
-    UI.vacOut.textContent = (a.vacuum.pct*100).toFixed(1) + "%";
-    UI.agOut.textContent = (a.aggression.dist*100).toFixed(1) + "%";
-    UI.scOut.textContent = Math.round(a.score*100) + "%";
-
-    UI.cRange.textContent = fmt(a.compress.range, 6);
-    UI.cZone.textContent = `${fmt(a.compress.low, 2)} → ${fmt(a.compress.high, 2)}`;
-    UI.vDir.textContent = a.vacuum.dir;
-    UI.vZone.textContent = `${fmt(a.vacuum.from, 2)} → ${fmt(a.vacuum.to, 2)}`;
-    UI.aLevel.textContent = `${fmt(a.aggression.level, 2)} (${a.aggression.dir})`;
-
-    // Overlays (price-based) using price lines
-    // Compress band (two lines)
-    addTag(`<b>COMPRESS</b> ${fmt(a.compress.low,2)} → ${fmt(a.compress.high,2)}`);
-    addPriceLine(a.compress.low, "COMPRESS LOW", "rgba(255,180,0,.85)");
-    addPriceLine(a.compress.high, "COMPRESS HIGH", "rgba(255,180,0,.85)");
-
-    // Vacuum band (two lines)
-    addTag(`<b>VACUUM</b> ${a.vacuum.dir} ${fmt(a.vacuum.from,2)} → ${fmt(a.vacuum.to,2)}`);
-    addPriceLine(a.vacuum.from, "VACUUM FROM", "rgba(0,255,150,.85)");
-    addPriceLine(a.vacuum.to, "VACUUM TO", "rgba(0,255,150,.85)");
-
-    // Aggression level
-    addTag(`<b>AGGRESSION</b> ${fmt(a.aggression.level,2)}`);
-    addPriceLine(a.aggression.level, "AGGRESSION", "rgba(255,80,80,.85)");
-
-    UI.progress.textContent = `Gatavs: ${sym} (${tf}).`;
-  }catch(e){
-    UI.progress.textContent = `Kļūda ielādējot ${sym}: ` + (e?.message || String(e));
+    els.notice.innerHTML = `<div class="okBox">LOCKED zonas gatavas: ${missing.length ? ("trūkst: " + missing.join(", ")) : "Compress + Vacuum + Aggression"}.</div>`;
   }
-}
 
-// Wire up UI
-UI.startBtn.addEventListener("click", start);
-UI.stopBtn.addEventListener("click", stop);
-UI.refreshBtn.addEventListener("click", refresh);
-UI.tf.addEventListener("change", ()=>{
-  UI.tfOut.textContent = UI.tf.value;
-  if(top10.length) renderTop10(top10.map(x=>({...x, tf:UI.tf.value})));
-});
-UI.search.addEventListener("input", ()=> renderTop10(top10));
-UI.mode.addEventListener("change", ()=>{
-  // reset universe on mode change
-  universe = [];
-  top10 = [];
-  renderTop10([]);
-  UI.progress.textContent = "Mode mainīts. Spied Start Screener.";
-});
+  function updateViewerKPIs(snap){
+    if (!snap) return;
+    els.kStatus.textContent = `${snap.status.label} ${snap.status.pct ? snap.status.pct + "%" : ""}`;
+    els.kCompress.textContent = snap.compress ? (snap.compress.strengthPct + "%") : "—";
+    els.kVacuum.textContent = snap.vacuum ? (snap.vacuum.strengthPct + "% " + (snap.vacuum.direction==="UP"?"↑":"↓")) : "—";
+    els.kAgg.textContent = snap.aggression ? (snap.aggression.strengthPct + "% " + (snap.aggression.side==="BUY"?"BUY":"SELL")) : "—";
+  }
 
-// Initial state
-UI.wsDot.className = "dot warn";
-UI.wsText.textContent = "Savienojums: gaida Start";
-UI.scanText.textContent = "Scan: gaida";
-UI.progress.textContent = "Spied “Start Screener”.";
+  function selectSymbol(sym){
+    selectedSymbol = sym;
+    const mp = live.prices.get(sym);
+    els.vTitle.textContent = `${sym} · ${tf}`;
+    els.vSub.textContent = `MarkPrice: ${PRICE_FMT(mp)} | Viewer rāda LOCKED zonas no klines (nevis no zoom/TF).`;
+
+    // Start kline stream for this symbol+tf
+    connectKlines(sym, tf);
+
+    // Update immediately if snapshot exists
+    const snap = snapshots.get(sym);
+    if (snap) {
+      updateViewerKPIs(snap);
+      renderNotice(snap);
+    } else {
+      els.kStatus.textContent = "SCAN…";
+      els.kCompress.textContent = "—";
+      els.kVacuum.textContent = "—";
+      els.kAgg.textContent = "—";
+      els.notice.innerHTML = `<div class="warnBox">Ielādēju klines (LIVE)… pēc dažām sekundēm parādīsies LOCKED zonas.</div>`;
+    }
+
+    draw();
+  }
+
+  // ---------- Chart drawing (candles + overlays from LOCKED snapshot) ----------
+  function draw(){
+    resizeCanvas();
+    const dpr = DPR();
+    const W = els.cv.width, H = els.cv.height;
+
+    // background
+    ctx.save();
+    ctx.scale(1,1);
+    ctx.fillStyle = "#0b0e11";
+    ctx.fillRect(0,0,W,H);
+
+    // if no klines
+    if (!klines.length){
+      ctx.fillStyle = "rgba(255,255,255,.08)";
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = "rgba(200,200,200,.8)";
+      ctx.font = `${Math.round(14*dpr)}px system-ui`;
+      ctx.fillText("Nav datu… izvēlies monētu vai pagaidi LIVE klines.", Math.round(14*dpr), Math.round(26*dpr));
+      ctx.restore();
+      return;
+    }
+
+    const candles = klines.slice(-120); // view window
+    let hi = -Infinity, lo = Infinity;
+    for (const c of candles){ hi = Math.max(hi, c.h); lo = Math.min(lo, c.l); }
+    const pad = (hi-lo) * 0.08;
+    hi += pad; lo -= pad;
+
+    const px = (price) => {
+      const t = (price - lo) / (hi - lo);
+      return H - t * H;
+    };
+
+    // grid
+    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    ctx.lineWidth = Math.max(1, Math.floor(1*dpr));
+    for (let i=1;i<6;i++){
+      const y = Math.round((H*i)/6);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+
+    // overlays from LOCKED snapshot
+    const snap = selectedSymbol ? snapshots.get(selectedSymbol) : null;
+
+    if (snap){
+      // Compress zone
+      if (els.togCompress.checked && snap.compress){
+        const y1 = px(snap.compress.high);
+        const y2 = px(snap.compress.low);
+        ctx.fillStyle = "rgba(255,180,0,.14)";
+        ctx.strokeStyle = "rgba(255,180,0,.55)";
+        ctx.lineWidth = Math.max(1, Math.floor(2*dpr));
+        ctx.fillRect(0, y1, W, (y2-y1));
+        ctx.strokeRect(0, y1, W, (y2-y1));
+        // label
+        ctx.fillStyle = "rgba(255,210,140,.35)";
+        ctx.font = `${Math.round(22*dpr)}px system-ui`;
+        ctx.fillText("COMPRESS", Math.round(14*dpr), Math.round(y1 + 28*dpr));
+      }
+
+      // Vacuum zone
+      if (els.togVacuum.checked && snap.vacuum){
+        const y1 = px(snap.vacuum.high);
+        const y2 = px(snap.vacuum.low);
+        ctx.fillStyle = "rgba(0,255,150,.11)";
+        ctx.strokeStyle = "rgba(0,255,150,.55)";
+        ctx.lineWidth = Math.max(1, Math.floor(2*dpr));
+        ctx.fillRect(0, y1, W, (y2-y1));
+        ctx.strokeRect(0, y1, W, (y2-y1));
+        ctx.fillStyle = "rgba(170,255,220,.30)";
+        ctx.font = `${Math.round(24*dpr)}px system-ui`;
+        ctx.fillText("VACUUM", Math.round(W*0.38), Math.round((y1+y2)/2));
+      }
+
+      // Aggression level
+      if (els.togAgg.checked && snap.aggression){
+        const y = px(snap.aggression.level);
+        ctx.strokeStyle = snap.aggression.side === "BUY" ? "rgba(0,255,150,.85)" : "rgba(255,77,77,.85)";
+        ctx.lineWidth = Math.max(1, Math.floor(2*dpr));
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+        ctx.fillStyle = snap.aggression.side === "BUY" ? "rgba(0,255,150,.35)" : "rgba(255,77,77,.35)";
+        ctx.font = `${Math.round(12*dpr)}px system-ui`;
+        ctx.fillText(`${snap.aggression.side} wall`, Math.round(14*dpr), Math.round(y - 8*dpr));
+      }
+    }
+
+    // draw candles
+    const n = candles.length;
+    const candleW = Math.max(2*dpr, Math.floor((W / n) * 0.65));
+    const gap = (W / n);
+
+    for (let i=0;i<n;i++){
+      const c = candles[i];
+      const x = i * gap + gap*0.2;
+
+      const yO = px(c.o), yC = px(c.c), yH = px(c.h), yL = px(c.l);
+      const up = c.c >= c.o;
+
+      // wick
+      ctx.strokeStyle = "rgba(255,255,255,.20)";
+      ctx.lineWidth = Math.max(1, Math.floor(1*dpr));
+      ctx.beginPath(); ctx.moveTo(x + candleW/2, yH); ctx.lineTo(x + candleW/2, yL); ctx.stroke();
+
+      // body
+      ctx.fillStyle = up ? "rgba(0,255,150,.55)" : "rgba(255,77,77,.55)";
+      const top = Math.min(yO, yC);
+      const h = Math.max(1*dpr, Math.abs(yC - yO));
+      ctx.fillRect(x, top, candleW, h);
+    }
+
+    // last price line
+    const lp = candles[candles.length - 1].c;
+    const yP = px(lp);
+    ctx.strokeStyle = "rgba(106,169,255,.55)";
+    ctx.lineWidth = Math.max(1, Math.floor(1*dpr));
+    ctx.beginPath(); ctx.moveTo(0,yP); ctx.lineTo(W,yP); ctx.stroke();
+    ctx.fillStyle = "rgba(200,225,255,.9)";
+    ctx.font = `${Math.round(12*dpr)}px system-ui`;
+    ctx.fillText(`Cena: ${PRICE_FMT(lp)}`, Math.round(14*dpr), Math.round(yP - 6*dpr));
+
+    ctx.restore();
+  }
+
+  // ---------- Controls ----------
+  els.btnTop10.onclick = () => { mode = "TOP10"; scheduleRenderList(); };
+  els.btnPreview.onclick = () => { mode = "PREVIEW"; scheduleRenderList(); };
+
+  els.tfSel.onchange = () => {
+    tf = els.tfSel.value;
+    if (selectedSymbol){
+      els.vTitle.textContent = `${selectedSymbol} · ${tf}`;
+      connectKlines(selectedSymbol, tf);
+    }
+    scheduleRenderList();
+  };
+
+  els.q.oninput = () => scheduleRenderList();
+
+  // toggles redraw
+  els.togCompress.onchange = draw;
+  els.togVacuum.onchange = draw;
+  els.togAgg.onchange = draw;
+
+  // ---------- Boot ----------
+  connectMark();
+  scheduleRenderList();
+
+  // Friendly default selection (optional): wait for list, then pick first snapshot item
+  setTimeout(() => {
+    // pick a random non-BTC symbol if exists
+    const prefs = ["ETHUSDT","SOLUSDT","BNBUSDT","WIFUSDT","ARBUSDT","SEIUSDT","ORDIUSDT","SUIUSDT"];
+    for (const p of prefs){
+      if (live.prices.has(p)){
+        selectSymbol(p);
+        break;
+      }
+    }
+  }, 1200);
+
+})();
 </script>
 </body>
 </html>
