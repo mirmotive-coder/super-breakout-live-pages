@@ -1,492 +1,90 @@
-<!DOCTYPE html>
-<html lang="lv">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Super Breakout LIVE</title>
-
-  <style>
-    :root{
-      --bg:#0b0e11;
-      --panel:#0b0e11;
-      --border:#1e2329;
-      --text:#cfd3dc;
-    }
-
-    * { box-sizing: border-box; }
-
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family: Arial, sans-serif;
-    }
-
-    /* Layout */
-    #app{
-      display:flex;
-      flex-direction: column;
-      height:100vh;
-      width:100%;
-    }
-
-    #chart-wrapper{
-      position:relative;
-      flex:1;
-      min-height:60vh;
-    }
-
-    #chart{
-      width:100%;
-      height:100%;
-    }
-
-    #panel{
-      padding:12px;
-      border-top:1px solid var(--border);
-      background:var(--panel);
-      font-size:14px;
-    }
-
-    @media (min-width: 768px){
-      #app{ flex-direction: row; }
-      #chart-wrapper{ flex:3; min-height:100vh; }
-      #panel{
-        flex:1;
-        border-top:none;
-        border-left:1px solid var(--border);
-        max-width:420px;
-      }
-    }
-
-    /* Overlays: each layer above chart */
-    .overlay-layer{
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-    }
-
-    /* Order of layers (lower first) */
-    #vacuum-layer{ z-index: 5; }
-    #compress-layer{ z-index: 6; }
-    #aggression-layer{ z-index: 7; }
-
-    /* Vacuum zone */
-    .vacuum-zone{
-      position:absolute;
-      left:5%;
-      width:90%;
-      background: rgba(0, 255, 150, 0.12);
-      border: 2px solid rgba(0, 255, 150, 0.6);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:none;
-      overflow:hidden;
-    }
-
-    .vacuum-zone span{
-      font-size:32px;
-      font-weight:bold;
-      letter-spacing:4px;
-      color: rgba(0, 255, 150, 0.35);
-      text-transform: uppercase;
-    }
-
-    /* Compress zone */
-    .compress-zone{
-      position:absolute;
-      left:15%;
-      width:70%;
-      background: rgba(255, 180, 0, 0.18);
-      border: 2px solid rgba(255, 180, 0, 0.70);
-      border-radius: 14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:none;
-    }
-
-    .compress-zone span{
-      font-size:16px;
-      font-weight:bold;
-      letter-spacing:2px;
-      color: rgba(255, 200, 80, 0.65);
-      text-transform: uppercase;
-    }
-
-    /* Aggression zones */
-    .aggr-zone{
-      position:absolute;
-      left:10%;
-      width:80%;
-      border-radius: 14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      pointer-events:none;
-      height: 44px;
-    }
-
-    .aggr-zone span{
-      font-size:16px;
-      font-weight:bold;
-      letter-spacing:3px;
-      text-transform: uppercase;
-      opacity: 0.9;
-    }
-
-    .aggr-buy{
-      background: rgba(0, 255, 150, 0.10);
-      border: 2px solid rgba(0, 255, 150, 0.45);
-    }
-    .aggr-buy span{ color: rgba(0, 255, 150, 0.55); }
-
-    .aggr-sell{
-      background: rgba(255, 70, 70, 0.10);
-      border: 2px solid rgba(255, 70, 70, 0.45);
-    }
-    .aggr-sell span{ color: rgba(255, 70, 70, 0.55); }
-
-    /* Panel UI */
-    .section-title{
-      font-weight:bold;
-      margin:0 0 10px 0;
-      font-size:16px;
-    }
-
-    .subtle{
-      opacity:0.85;
-      margin:0;
-    }
-
-    .divider{
-      margin:14px 0;
-      border-top:1px solid var(--border);
-    }
-
-    .control-row{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin:8px 0;
-      user-select:none;
-    }
-
-    .control-row input[type="checkbox"]{
-      width:18px;
-      height:18px;
-    }
-
-    .control-row label{
-      cursor:pointer;
-    }
-
-    .slider-block{
-      margin:12px 0;
-    }
-
-    .slider-label{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:6px;
-      opacity:0.95;
-    }
-
-    input[type="range"]{
-      width:100%;
-    }
-
-    .hint{
-      font-size:12px;
-      opacity:0.75;
-      margin-top:6px;
-      line-height:1.35;
-    }
-  </style>
-</head>
-
-<body>
-  <div id="app">
-
-    <div id="chart-wrapper">
-      <div id="chart"></div>
-
-      <!-- Overlay layers (NEKAD neiznest ārā no chart-wrapper) -->
-      <div id="vacuum-layer" class="overlay-layer"></div>
-      <div id="compress-layer" class="overlay-layer"></div>
-      <div id="aggression-layer" class="overlay-layer"></div>
-    </div>
-
-    <div id="panel">
-      <div class="section-title">Metodikas</div>
-
-      <p class="subtle">
-        Savienojums: <b id="connStatus">LIVE</b><br>
-        Instruments: <b id="instrument">BTCUSDT</b><br>
-        Timeframe: <b id="timeframe">15m</b><br>
-        BTC cena: <b id="lastPrice">—</b><br>
-        Latency: <b id="latency">—</b>
-      </p>
-
-      <div class="divider"></div>
-
-      <div class="section-title">Kontrole</div>
-
-      <div class="control-row">
-        <input id="toggleVacuum" type="checkbox" checked />
-        <label for="toggleVacuum">Vacuum</label>
-      </div>
-
-      <div class="control-row">
-        <input id="toggleCompress" type="checkbox" checked />
-        <label for="toggleCompress">Compress</label>
-      </div>
-
-      <div class="control-row">
-        <input id="toggleAggression" type="checkbox" checked />
-        <label for="toggleAggression">Aggression</label>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="section-title">Kalibrācija</div>
-
-      <div class="slider-block">
-        <div class="slider-label">
-          <span>Vacuum pozīcija</span><b id="vacTopVal">35%</b>
-        </div>
-        <input id="vacTop" type="range" min="0" max="90" value="35" />
-      </div>
-
-      <div class="slider-block">
-        <div class="slider-label">
-          <span>Vacuum augstums</span><b id="vacHeightVal">18%</b>
-        </div>
-        <input id="vacHeight" type="range" min="5" max="60" value="18" />
-      </div>
-
-      <div class="slider-block">
-        <div class="slider-label">
-          <span>Compress pozīcija</span><b id="cmpTopVal">55%</b>
-        </div>
-        <input id="cmpTop" type="range" min="0" max="90" value="55" />
-      </div>
-
-      <div class="slider-block">
-        <div class="slider-label">
-          <span>Compress biezums</span><b id="cmpHeightVal">48px</b>
-        </div>
-        <input id="cmpHeight" type="range" min="24" max="120" value="48" />
-      </div>
-
-      <div class="hint">
-        Šobrīd te ir “forma” (vizuālais karkass). Nākamais solis būs algoritms + datu plūsma un top-10 atlase.
-      </div>
-    </div>
-
-  </div>
-
-  <!-- TradingView -->
-  <script src="https://s3.tradingview.com/tv.js"></script>
-
-  <script>
-    // ---------------------------
-    // 1) TradingView chart
-    // ---------------------------
-    new TradingView.widget({
-      container_id: "chart",
-      autosize: true,
-      symbol: "BINANCE:BTCUSDT",
-      interval: "15",
-      timezone: "Etc/UTC",
-      theme: "dark",
-      style: "1",
-      locale: "en",
-      hide_top_toolbar: false,
-      hide_legend: true,
-      allow_symbol_change: false,
-      save_image: false
-    });
-
-    // ---------------------------
-    // 2) Indicator system (state)
-    // ---------------------------
-    const indicators = {
-      vacuum: { enabled: true, topPct: 35, heightPct: 18 },
-      compress: { enabled: true, topPct: 55, heightPx: 48 },
-      aggression: { enabled: true } // demo visuals
-    };
-
-    // ---------------------------
-    // 3) Build overlay elements
-    // ---------------------------
-    const vacuumLayer = document.getElementById("vacuum-layer");
-    const compressLayer = document.getElementById("compress-layer");
-    const aggressionLayer = document.getElementById("aggression-layer");
-
-    // Vacuum zone element
-    const vacuumEl = document.createElement("div");
-    vacuumEl.className = "vacuum-zone";
-    const vacuumLabel = document.createElement("span");
-    vacuumLabel.textContent = "VACUUM";
-    vacuumEl.appendChild(vacuumLabel);
-    vacuumLayer.appendChild(vacuumEl);
-
-    // Compress zone element
-    const compressEl = document.createElement("div");
-    compressEl.className = "compress-zone";
-    const compressLabel = document.createElement("span");
-    compressLabel.textContent = "COMPRESS";
-    compressEl.appendChild(compressLabel);
-    compressLayer.appendChild(compressEl);
-
-    // Aggression demo zones
-    const sellEl = document.createElement("div");
-    sellEl.className = "aggr-zone aggr-sell";
-    const sellLabel = document.createElement("span");
-    sellLabel.textContent = "SELL AGGRESSION";
-    sellEl.appendChild(sellLabel);
-    aggressionLayer.appendChild(sellEl);
-
-    const buyEl = document.createElement("div");
-    buyEl.className = "aggr-zone aggr-buy";
-    const buyLabel = document.createElement("span");
-    buyLabel.textContent = "BUY AGGRESSION";
-    buyEl.appendChild(buyLabel);
-    aggressionLayer.appendChild(buyEl);
-
-    // ---------------------------
-    // 4) Apply positions (render)
-    // ---------------------------
-    function renderOverlays() {
-      // Vacuum
-      vacuumLayer.style.display = indicators.vacuum.enabled ? "block" : "none";
-      vacuumEl.style.top = indicators.vacuum.topPct + "%";
-      vacuumEl.style.height = indicators.vacuum.heightPct + "%";
-
-      // Compress
-      compressLayer.style.display = indicators.compress.enabled ? "block" : "none";
-      compressEl.style.top = indicators.compress.topPct + "%";
-      compressEl.style.height = indicators.compress.heightPx + "px";
-
-      // Aggression (demo)
-      aggressionLayer.style.display = indicators.aggression.enabled ? "block" : "none";
-      // Demo placement: one above vacuum, one below compress
-      sellEl.style.top = "8%";
-      buyEl.style.top = "78%";
-    }
-
-    // ---------------------------
-    // 5) UI wiring (toggles + sliders)
-    // ---------------------------
-    const toggleVacuum = document.getElementById("toggleVacuum");
-    const toggleCompress = document.getElementById("toggleCompress");
-    const toggleAggression = document.getElementById("toggleAggression");
-
-    toggleVacuum.addEventListener("change", () => {
-      indicators.vacuum.enabled = toggleVacuum.checked;
-      renderOverlays();
-    });
-
-    toggleCompress.addEventListener("change", () => {
-      indicators.compress.enabled = toggleCompress.checked;
-      renderOverlays();
-    });
-
-    toggleAggression.addEventListener("change", () => {
-      indicators.aggression.enabled = toggleAggression.checked;
-      renderOverlays();
-    });
-
-    const vacTop = document.getElementById("vacTop");
-    const vacHeight = document.getElementById("vacHeight");
-    const cmpTop = document.getElementById("cmpTop");
-    const cmpHeight = document.getElementById("cmpHeight");
-
-    const vacTopVal = document.getElementById("vacTopVal");
-    const vacHeightVal = document.getElementById("vacHeightVal");
-    const cmpTopVal = document.getElementById("cmpTopVal");
-    const cmpHeightVal = document.getElementById("cmpHeightVal");
-
-    function setLabel(el, txt){ el.textContent = txt; }
-
-    vacTop.addEventListener("input", () => {
-      indicators.vacuum.topPct = Number(vacTop.value);
-      setLabel(vacTopVal, vacTop.value + "%");
-      renderOverlays();
-    });
-
-    vacHeight.addEventListener("input", () => {
-      indicators.vacuum.heightPct = Number(vacHeight.value);
-      setLabel(vacHeightVal, vacHeight.value + "%");
-      renderOverlays();
-    });
-
-    cmpTop.addEventListener("input", () => {
-      indicators.compress.topPct = Number(cmpTop.value);
-      setLabel(cmpTopVal, cmpTop.value + "%");
-      renderOverlays();
-    });
-
-    cmpHeight.addEventListener("input", () => {
-      indicators.compress.heightPx = Number(cmpHeight.value);
-      setLabel(cmpHeightVal, cmpHeight.value + "px");
-      renderOverlays();
-    });
-
-    // ---------------------------
-    // 6) Minimal “live” price + latency (Binance public WS)
-    // ---------------------------
-    // Tas nav treidings un neprasa API key: publiska cena + laiks.
-    const lastPriceEl = document.getElementById("lastPrice");
-    const latencyEl = document.getElementById("latency");
-    const connStatusEl = document.getElementById("connStatus");
-
-    let ws;
-    function connectPriceWS() {
-      try {
-        connStatusEl.textContent = "CONNECTING";
-        const url = "wss://fstream.binance.com/ws/btcusdt@markPrice@1s";
-        ws = new WebSocket(url);
-
-        ws.onopen = () => {
-          connStatusEl.textContent = "CONNECTED";
-        };
-
-        ws.onmessage = (evt) => {
-          const t0 = performance.now();
-          const msg = JSON.parse(evt.data);
-          // mark price field:
-          const price = Number(msg.p);
-          if (!Number.isNaN(price)) {
-            lastPriceEl.textContent = price.toFixed(2);
-          }
-          const t1 = performance.now();
-          latencyEl.textContent = Math.max(0, Math.round(t1 - t0)) + "ms";
-        };
-
-        ws.onclose = () => {
-          connStatusEl.textContent = "DISCONNECTED";
-          latencyEl.textContent = "—";
-          // autoreconnect
-          setTimeout(connectPriceWS, 1500);
-        };
-
-        ws.onerror = () => {
-          connStatusEl.textContent = "ERROR";
-        };
-      } catch (e) {
-        connStatusEl.textContent = "ERROR";
-      }
-    }
-
-    // Initial render
-    renderOverlays();
-    connectPriceWS();
-
-    console.log("Initialized", indicators);
-  </script>
-</body>
-</html>
+<script>
+/* =========================================================
+   C1 — DATA FLOW CORE (NO CALCULATIONS YET)
+   Purpose:
+   - Define instrument universe
+   - Define data model per symbol
+   - Prepare for scoring & top-10 selection
+   ========================================================= */
+
+/* === 1. BINANCE FUTURES UNIVERSE (USDT only) === */
+const C1_UNIVERSE = [
+  "BTCUSDT","ETHUSDT","BNBUSDT","SOLUSDT","XRPUSDT",
+  "ADAUSDT","AVAXUSDT","DOGEUSDT","LINKUSDT","MATICUSDT",
+  "DOTUSDT","LTCUSDT","BCHUSDT","TRXUSDT","ATOMUSDT",
+  "OPUSDT","ARBUSDT","INJUSDT","APTUSDT","SUIUSDT"
+];
+
+/* === 2. PER-SYMBOL DATA MODEL === */
+function createSymbolState(symbol) {
+  return {
+    symbol,
+    timeframe: "15m",
+
+    price: null,
+    lastUpdate: null,
+
+    vacuum: {
+      active: false,
+      top: null,
+      bottom: null,
+      strength: 0
+    },
+
+    compress: {
+      active: false,
+      range: null,
+      duration: 0
+    },
+
+    aggression: {
+      buy: 0,
+      sell: 0,
+      dominant: null
+    },
+
+    breakout: {
+      probability: 0,
+      strength: 0,
+      direction: null
+    },
+
+    score: 0 // <- top-10 atlasei
+  };
+}
+
+/* === 3. GLOBAL SYSTEM STATE === */
+const SYSTEM = {
+  mode: "LIVE",
+  timeframe: "15m",
+
+  indicators: {
+    vacuum: true,
+    compress: true,
+    aggression: true
+  },
+
+  symbols: {},
+  top10: []
+};
+
+/* === 4. INITIALIZE ALL SYMBOL STATES === */
+C1_UNIVERSE.forEach(sym => {
+  SYSTEM.symbols[sym] = createSymbolState(sym);
+});
+
+/* === 5. DEBUG VISIBILITY (temporary) === */
+console.log("C1 INITIALIZED");
+console.log("Universe size:", C1_UNIVERSE.length);
+console.log("System state:", SYSTEM);
+
+/* =========================================================
+   END OF C1
+   Next:
+   - C2: Live price feed (Binance WS)
+   - C3: Vacuum detection
+   - C4: Compress detection
+   - C5: Aggression math
+   - C6: Top-10 auto selection
+   ========================================================= */
+</script>
