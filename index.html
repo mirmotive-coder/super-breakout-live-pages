@@ -1,795 +1,159 @@
 <!DOCTYPE html>
 <html lang="lv">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Super Breakout LIVE</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Breakout LIVE</title>
 
-  <style>
-    :root{
-      --bg: #0b0e11;
-      --panel: #0f1318;
-      --text: #cfd3dc;
-      --muted: #9aa4b2;
-      --line: #1e2329;
-      --accent: #2f81f7;
+<style>
+body {
+  margin: 0;
+  background: #0b0e11;
+  color: #cfd3dc;
+  font-family: Arial, sans-serif;
+}
 
-      --vacuum-fill: rgba(0, 255, 150, 0.12);
-      --vacuum-border: rgba(0, 255, 150, 0.60);
-      --vacuum-text: rgba(0, 255, 150, 0.35);
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
 
-      --compress-fill: rgba(255, 180, 0, 0.18);
-      --compress-border: rgba(255, 180, 0, 0.70);
-      --compress-text: rgba(255, 200, 80, 0.60);
+#chart-wrapper {
+  position: relative;
+  flex: 1;
+}
 
-      --sell-fill: rgba(255, 60, 60, 0.12);
-      --sell-border: rgba(255, 60, 60, 0.40);
-      --sell-text: rgba(255, 60, 60, 0.35);
+#chart {
+  width: 100%;
+  height: 100%;
+}
 
-      --buy-fill: rgba(0, 255, 150, 0.10);
-      --buy-border: rgba(0, 255, 150, 0.35);
-      --buy-text: rgba(0, 255, 150, 0.30);
-    }
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
-    * { box-sizing: border-box; }
+.vacuum {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  top: 30%;
+  height: 18%;
+  background: rgba(0,255,150,0.12);
+  border: 2px solid rgba(0,255,150,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  letter-spacing: 4px;
+  color: rgba(0,255,150,0.35);
+}
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Arial, sans-serif;
-    }
+.compress {
+  position: absolute;
+  left: 15%;
+  width: 70%;
+  top: 55%;
+  height: 48px;
+  background: rgba(255,180,0,0.18);
+  border: 2px solid rgba(255,180,0,0.7);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: rgba(255,200,80,0.6);
+}
 
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-    }
+#panel {
+  padding: 12px;
+  border-top: 1px solid #1e2329;
+  font-size: 14px;
+}
 
-    #chart-wrapper {
-      position: relative;
-      flex: 1;
-      min-height: 60vh;
-      background: var(--bg);
-    }
-
-    #chart {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Overlay layers */
-    .overlay-layer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
-    #vacuum-layer { z-index: 5; }
-    #compress-layer { z-index: 6; }
-    #aggression-layer { z-index: 7; }
-
-    /* Vacuum zone */
-    .vacuum-zone {
-      position: absolute;
-      left: 5%;
-      width: 90%;
-      background: var(--vacuum-fill);
-      border: 2px solid var(--vacuum-border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      font-weight: bold;
-      letter-spacing: 4px;
-      color: var(--vacuum-text);
-      text-transform: uppercase;
-    }
-
-    /* Compress zone */
-    .compress-zone {
-      position: absolute;
-      left: 15%;
-      width: 70%;
-      background: var(--compress-fill);
-      border: 2px solid var(--compress-border);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-    }
-    .compress-zone span {
-      font-size: 16px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: var(--compress-text);
-    }
-
-    /* Aggression placeholders */
-    .aggr-zone {
-      position: absolute;
-      left: 3%;
-      width: 94%;
-      height: 64px;
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-      font-weight: bold;
-      letter-spacing: 4px;
-      font-size: 22px;
-    }
-    .aggr-sell {
-      top: 6%;
-      background: var(--sell-fill);
-      border: 2px solid var(--sell-border);
-      color: var(--sell-text);
-    }
-    .aggr-buy {
-      bottom: 10%;
-      background: var(--buy-fill);
-      border: 2px solid var(--buy-border);
-      color: var(--buy-text);
-    }
-
-    /* Panel */
-    #panel {
-      border-top: 1px solid var(--line);
-      background: var(--panel);
-      padding: 12px;
-      overflow: auto;
-      max-height: 46vh;
-    }
-
-    h3 {
-      margin: 10px 0 8px;
-      font-size: 16px;
-    }
-
-    .kv {
-      line-height: 1.35;
-      font-size: 14px;
-      margin-bottom: 10px;
-    }
-
-    .muted { color: var(--muted); }
-
-    .controls {
-      padding: 10px 0 4px;
-      border-top: 1px solid var(--line);
-      margin-top: 10px;
-    }
-
-    label.cb {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 16px;
-      padding: 4px 0;
-    }
-    input[type="checkbox"]{
-      width: 18px;
-      height: 18px;
-      accent-color: var(--accent);
-    }
-
-    .sliders {
-      padding-top: 10px;
-      border-top: 1px solid var(--line);
-      margin-top: 10px;
-    }
-
-    .slider {
-      margin: 10px 0;
-    }
-    .slider .top {
-      display: flex;
-      justify-content: space-between;
-      font-size: 15px;
-      margin-bottom: 6px;
-      color: var(--text);
-    }
-    input[type="range"]{
-      width: 100%;
-      accent-color: var(--accent);
-    }
-
-    .note {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    /* Universe + watch */
-    .tools {
-      padding-top: 10px;
-      border-top: 1px solid var(--line);
-      margin-top: 10px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .tool-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .input, .select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      background: #0b0e11;
-      color: var(--text);
-      border-radius: 10px;
-      outline: none;
-      font-size: 15px;
-    }
-
-    .btn {
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      background: #0b0e11;
-      color: var(--text);
-      border-radius: 10px;
-      font-size: 15px;
-    }
-
-    .btn.primary{
-      border-color: rgba(47, 129, 247, 0.6);
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px;
-      background: #0b0e11;
-    }
-
-    .list {
-      display: grid;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: rgba(255,255,255,0.02);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .item b { font-weight: 700; }
-    .pill {
-      font-size: 12px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-    }
-
-    .ok { color: rgba(0,255,150,0.8); }
-    .bad { color: rgba(255,60,60,0.8); }
-  </style>
+.status {
+  font-weight: bold;
+}
+.ok { color: #0f0; }
+.warn { color: #ffa500; }
+.err { color: #f00; }
+</style>
 </head>
 
 <body>
-  <div id="app">
-    <div id="chart-wrapper">
-      <div id="chart"></div>
+<div id="app">
 
-      <!-- Overlay layers -->
-      <div id="vacuum-layer" class="overlay-layer"></div>
-      <div id="compress-layer" class="overlay-layer"></div>
-      <div id="aggression-layer" class="overlay-layer"></div>
-    </div>
-
-    <div id="panel">
-      <div class="kv">
-        <strong>Metodikas</strong><br><br>
-        Savienojums: <b id="conn">LOADING</b><br>
-        Instruments: <b id="sym">BTCUSDT</b><br>
-        Timeframe: <b id="tf">15m</b><br>
-        Cena: <b id="last">-</b><br>
-        Latency: <b id="lat">-</b><br>
-        Universe: <b id="universeCount">-</b> (Binance Futures USDT Perpetual)
-      </div>
-
-      <div class="tools">
-        <h3>Paaugstināta uzraudzība</h3>
-
-        <div class="tool-row">
-          <input id="symbolInput" class="input" placeholder="Ieraksti monētu, piem: BTCUSDT / ETHUSDT / SOLUSDT" />
-          <button id="goBtn" class="btn primary">Atvērt</button>
-        </div>
-
-        <div class="tool-row">
-          <select id="tfSelect" class="select">
-            <option value="1m">1m</option>
-            <option value="5m">5m</option>
-            <option value="15m" selected>15m</option>
-            <option value="1h">1h</option>
-            <option value="4h">4h</option>
-          </select>
-          <button id="refreshTopBtn" class="btn">Top-10 refresh</button>
-        </div>
-
-        <div class="grid2">
-          <div class="card">
-            <div><b>Top-10 (auto atlase)</b> <span class="pill" id="topMeta">loading…</span></div>
-            <div class="list" id="topList"></div>
-          </div>
-
-          <div class="card">
-            <div><b>Watch (klikšķināms)</b> <span class="pill" id="watchMeta">0</span></div>
-            <div class="list" id="watchList"></div>
-            <div style="margin-top:10px;" class="muted">Padoms: atver Top-10, klikšķini — ieliks watch un pārslēgs chart.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <h3>Kontrole</h3>
-        <label class="cb"><input id="toggleVacuum" type="checkbox" checked /> Vacuum</label>
-        <label class="cb"><input id="toggleCompress" type="checkbox" checked /> Compress</label>
-        <label class="cb"><input id="toggleAggression" type="checkbox" checked /> Aggression</label>
-      </div>
-
-      <div class="sliders">
-        <h3>Kalibrācija</h3>
-
-        <div class="slider">
-          <div class="top"><span>Vacuum pozīcija</span><span id="vacTopVal">35%</span></div>
-          <input id="vacTop" type="range" min="0" max="90" value="35" />
-        </div>
-
-        <div class="slider">
-          <div class="top"><span>Vacuum augstums</span><span id="vacHVal">18%</span></div>
-          <input id="vacH" type="range" min="5" max="60" value="18" />
-        </div>
-
-        <div class="slider">
-          <div class="top"><span>Compress pozīcija</span><span id="cmpTopVal">55%</span></div>
-          <input id="cmpTop" type="range" min="0" max="90" value="55" />
-        </div>
-
-        <div class="slider">
-          <div class="top"><span>Compress biezums</span><span id="cmpHVal">48px</span></div>
-          <input id="cmpH" type="range" min="18" max="120" value="48" />
-        </div>
-
-        <div class="note">
-          Šajā solī: Binance Futures monētu saraksts + Top-10 atlase + Watch/klikšķis + LIVE cena/latency.
-          Nākamais solis: “C1 scoring” pēc tavām metodikām (vacuum/compress/aggression) un top-10 no indikātoriem, nevis no 24h statistikas.
-        </div>
-      </div>
-    </div>
+<div id="chart-wrapper">
+  <div id="chart"></div>
+  <div class="layer">
+    <div class="vacuum">VACUUM</div>
+    <div class="compress">COMPRESS</div>
   </div>
+</div>
 
-  <!-- TradingView -->
-  <script src="https://s3.tradingview.com/tv.js"></script>
+<div id="panel">
+  Instruments: <b id="sym">BTCUSDT</b><br>
+  Timeframe: <b>15m</b><br>
+  Chart mode: <span id="chartMode" class="status">LOADING</span>
+</div>
 
-  <script>
-    /******************************************************************
-     * 0) ENDPOINTS
-     ******************************************************************/
-    const BINANCE_FAPI = "https://fapi.binance.com";
-    const BINANCE_WS = "wss://fstream.binance.com/ws";
+</div>
 
-    /******************************************************************
-     * 1) UI ELEMENTS
-     ******************************************************************/
-    const elConn = document.getElementById("conn");
-    const elSym  = document.getElementById("sym");
-    const elTf   = document.getElementById("tf");
-    const elLast = document.getElementById("last");
-    const elLat  = document.getElementById("lat");
-    const elUniverseCount = document.getElementById("universeCount");
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+const state = {
+  symbol: "BTCUSDT",
+  timeframe: "15",
+  container: "chart"
+};
 
-    const vacuumLayer = document.getElementById("vacuum-layer");
-    const compressLayer = document.getElementById("compress-layer");
-    const aggressionLayer = document.getElementById("aggression-layer");
+function loadTradingView(symbol, suffix, onFail){
+  document.getElementById(state.container).innerHTML = "";
+  let loaded = false;
 
-    const toggleVacuum = document.getElementById("toggleVacuum");
-    const toggleCompress = document.getElementById("toggleCompress");
-    const toggleAggression = document.getElementById("toggleAggression");
-
-    const vacTop = document.getElementById("vacTop");
-    const vacH = document.getElementById("vacH");
-    const cmpTop = document.getElementById("cmpTop");
-    const cmpH = document.getElementById("cmpH");
-
-    const vacTopVal = document.getElementById("vacTopVal");
-    const vacHVal = document.getElementById("vacHVal");
-    const cmpTopVal = document.getElementById("cmpTopVal");
-    const cmpHVal = document.getElementById("cmpHVal");
-
-    const symbolInput = document.getElementById("symbolInput");
-    const goBtn = document.getElementById("goBtn");
-    const tfSelect = document.getElementById("tfSelect");
-
-    const topList = document.getElementById("topList");
-    const topMeta = document.getElementById("topMeta");
-    const refreshTopBtn = document.getElementById("refreshTopBtn");
-
-    const watchList = document.getElementById("watchList");
-    const watchMeta = document.getElementById("watchMeta");
-
-    /******************************************************************
-     * 2) OVERLAYS (placeholders)
-     ******************************************************************/
-    const vacuumBox = document.createElement("div");
-    vacuumBox.className = "vacuum-zone";
-    vacuumBox.textContent = "VACUUM";
-    vacuumLayer.appendChild(vacuumBox);
-
-    const compressBox = document.createElement("div");
-    compressBox.className = "compress-zone";
-    const compressLabel = document.createElement("span");
-    compressLabel.textContent = "COMPRESS";
-    compressBox.appendChild(compressLabel);
-    compressLayer.appendChild(compressBox);
-
-    const sellAgg = document.createElement("div");
-    sellAgg.className = "aggr-zone aggr-sell";
-    sellAgg.textContent = "SELL AGGRESSION";
-    aggressionLayer.appendChild(sellAgg);
-
-    const buyAgg = document.createElement("div");
-    buyAgg.className = "aggr-zone aggr-buy";
-    buyAgg.textContent = "BUY AGGRESSION";
-    aggressionLayer.appendChild(buyAgg);
-
-    function applyCalibration() {
-      const vTop = Number(vacTop.value);
-      const vH = Number(vacH.value);
-      const cTop = Number(cmpTop.value);
-      const cH = Number(cmpH.value);
-
-      vacTopVal.textContent = vTop + "%";
-      vacHVal.textContent = vH + "%";
-      cmpTopVal.textContent = cTop + "%";
-      cmpHVal.textContent = cH + "px";
-
-      vacuumBox.style.top = vTop + "%";
-      vacuumBox.style.height = vH + "%";
-
-      compressBox.style.top = cTop + "%";
-      compressBox.style.height = cH + "px";
+  const widget = new TradingView.widget({
+    container_id: state.container,
+    autosize: true,
+    symbol: "BINANCE:" + symbol + suffix,
+    interval: state.timeframe,
+    timezone: "Etc/UTC",
+    theme: "dark",
+    style: "1",
+    hide_legend: true,
+    allow_symbol_change: true,
+    studies: [],
+    onChartReady: () => {
+      loaded = true;
+      document.getElementById("chartMode").innerText =
+        suffix === ".P" ? "FUTURES" : "SPOT";
+      document.getElementById("chartMode").className =
+        suffix === ".P" ? "status ok" : "status warn";
     }
-    [vacTop, vacH, cmpTop, cmpH].forEach(inp => inp.addEventListener("input", applyCalibration));
-    applyCalibration();
+  });
 
-    function applyToggles(){
-      vacuumLayer.style.display = toggleVacuum.checked ? "block" : "none";
-      compressLayer.style.display = toggleCompress.checked ? "block" : "none";
-      aggressionLayer.style.display = toggleAggression.checked ? "block" : "none";
-    }
-    [toggleVacuum, toggleCompress, toggleAggression].forEach(cb => cb.addEventListener("change", applyToggles));
-    applyToggles();
+  setTimeout(() => {
+    if (!loaded && onFail) onFail();
+  }, 2500);
+}
 
-    /******************************************************************
-     * 3) STATE
-     ******************************************************************/
-    const state = {
-      instrument: "BTCUSDT",
-      timeframe: "15m",
-      mode: "LIVE",
-      lastPrice: null,
-      latencyMs: null,
+function loadChart(){
+  document.getElementById("chartMode").innerText = "LOADING";
+  document.getElementById("chartMode").className = "status";
 
-      universe: [],     // ["BTCUSDT", ...] (USDT perpetual)
-      watch: [],        // clickable list
-      top10: [],        // computed list
-
-      ws: null,
-      tvWidget: null,
-      tvContainerId: "chart",
-    };
-
-    function tfToBinanceKline(tf){
-      // Binance klines accept: 1m 5m 15m 1h 4h etc.
-      return tf;
-    }
-
-    function formatNum(x){
-      if (x == null || Number.isNaN(x)) return "-";
-      const n = Number(x);
-      if (!Number.isFinite(n)) return "-";
-      if (n >= 1000) return n.toFixed(2);
-      return n.toFixed(4);
-    }
-
-    function updateHeader(price, latencyMs){
-      state.lastPrice = price;
-      state.latencyMs = latencyMs;
-
-      elConn.textContent = "CONNECTED";
-      elSym.textContent = state.instrument;
-      elTf.textContent = state.timeframe;
-      elLast.textContent = price == null ? "-" : formatNum(price);
-      elLat.textContent = latencyMs == null ? "-" : (latencyMs + "ms");
-    }
-
-    function setUniverse(list){
-      state.universe = list;
-      elUniverseCount.textContent = String(list.length);
-    }
-
-    function setWatch(list){
-      state.watch = list;
-      watchMeta.textContent = String(list.length);
-      renderWatch();
-    }
-
-    /******************************************************************
-     * 4) TRADINGVIEW (recreate on symbol/timeframe change)
-     ******************************************************************/
-    function loadChart(symbol, timeframe){
-      const tvSymbol = "BINANCE:" + symbol;
-      const interval = (timeframe === "1h") ? "60" :
-                       (timeframe === "4h") ? "240" :
-                       timeframe.replace("m","");
-
-      // Clear container
-      const el = document.getElementById(state.tvContainerId);
-      el.innerHTML = "";
-
-      state.tvWidget = new TradingView.widget({
-        container_id: state.tvContainerId,
-        autosize: true,
-        symbol: tvSymbol,
-        interval: interval,
-        timezone: "Etc/UTC",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        hide_top_toolbar: false,
-        hide_legend: true,
-        allow_symbol_change: true,
-        save_image: false
-      });
-    }
-
-    /******************************************************************
-     * 5) BINANCE: Universe (USDT Perpetual)
-     ******************************************************************/
-    async function fetchUniverse(){
-      const r = await fetch(`${BINANCE_FAPI}/fapi/v1/exchangeInfo`);
-      if (!r.ok) throw new Error("exchangeInfo failed: " + r.status);
-      const data = await r.json();
-
-      const list = (data.symbols || [])
-        .filter(s =>
-          s.contractType === "PERPETUAL" &&
-          s.quoteAsset === "USDT" &&
-          s.status === "TRADING"
-        )
-        .map(s => s.symbol)
-        .sort((a,b) => a.localeCompare(b));
-
-      setUniverse(list);
-    }
-
-    /******************************************************************
-     * 6) BINANCE: Top-10 (fast baseline using 24h stats)
-     *    Later we replace scoring with your C1/C2 indicators.
-     ******************************************************************/
-    function score24h(item){
-      // item: { symbol, quoteVolume, priceChangePercent }
-      const vol = Number(item.quoteVolume || 0);
-      const chg = Math.abs(Number(item.priceChangePercent || 0));
-      const volFactor = Math.log10(Math.max(1, vol));
-      return chg * volFactor; // simple baseline
-    }
-
-    async function refreshTop10(){
-      topMeta.textContent = "loading…";
-      topList.innerHTML = "";
-
-      const r = await fetch(`${BINANCE_FAPI}/fapi/v1/ticker/24hr`);
-      if (!r.ok) throw new Error("ticker/24hr failed: " + r.status);
-      const all = await r.json();
-
-      // keep only our universe
-      const universeSet = new Set(state.universe);
-      const filtered = all.filter(x => universeSet.has(x.symbol));
-
-      const scored = filtered
-        .map(x => ({
-          symbol: x.symbol,
-          quoteVolume: x.quoteVolume,
-          priceChangePercent: x.priceChangePercent,
-          score: score24h(x)
-        }))
-        .sort((a,b) => b.score - a.score)
-        .slice(0, 10);
-
-      state.top10 = scored;
-      renderTop10();
-      topMeta.textContent = "ok";
-    }
-
-    function renderTop10(){
-      topList.innerHTML = "";
-      const items = state.top10 || [];
-      for (const x of items){
-        const row = document.createElement("div");
-        row.className = "item";
-        row.innerHTML = `
-          <div>
-            <b>${x.symbol}</b>
-            <span class="pill ${Number(x.priceChangePercent) >= 0 ? "ok":"bad"}" style="margin-left:8px;">
-              ${Number(x.priceChangePercent).toFixed(2)}%
-            </span>
-          </div>
-          <div class="pill">score ${x.score.toFixed(2)}</div>
-        `;
-        row.addEventListener("click", () => {
-          addToWatch(x.symbol);
-          setInstrument(x.symbol);
-        });
-        topList.appendChild(row);
-      }
-    }
-
-    function renderWatch(){
-      watchList.innerHTML = "";
-      for (const sym of state.watch){
-        const row = document.createElement("div");
-        row.className = "item";
-        row.innerHTML = `
-          <div><b>${sym}</b></div>
-          <div class="pill">open</div>
-        `;
-        row.addEventListener("click", () => setInstrument(sym));
-        watchList.appendChild(row);
-      }
-    }
-
-    function addToWatch(sym){
-      sym = String(sym || "").toUpperCase().trim();
-      if (!sym) return;
-      if (!state.watch.includes(sym)){
-        setWatch([sym, ...state.watch].slice(0, 30));
-      }
-    }
-
-    /******************************************************************
-     * 7) BINANCE: Live price via WebSocket (miniTicker)
-     ******************************************************************/
-    function closeWS(){
-      try { if (state.ws) state.ws.close(); } catch {}
-      state.ws = null;
-    }
-
-    function openWS(symbol){
-      closeWS();
-      const stream = symbol.toLowerCase() + "@miniTicker";
-      const url = `${BINANCE_WS}/${stream}`;
-
-      const ws = new WebSocket(url);
-      state.ws = ws;
-
-      ws.onopen = () => {
-        elConn.textContent = "CONNECTED";
-      };
-
-      ws.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          // miniTicker: E=eventTime, c=close/last
-          const eventTime = Number(msg.E);
-          const price = Number(msg.c);
-          const lat = Number.isFinite(eventTime) ? Math.max(0, Date.now() - eventTime) : null;
-          updateHeader(price, lat);
-        } catch {}
-      };
-
-      ws.onerror = () => {
-        elConn.textContent = "ERROR";
-      };
-
-      ws.onclose = () => {
-        elConn.textContent = "DISCONNECTED";
-      };
-    }
-
-    /******************************************************************
-     * 8) CHANGE INSTRUMENT / TIMEFRAME
-     ******************************************************************/
-    function setInstrument(sym){
-      sym = String(sym || "").toUpperCase().trim();
-      if (!sym) return;
-
-      // normalize: allow typing "BTC" => BTCUSDT
-      if (!sym.endsWith("USDT")) sym = sym + "USDT";
-
-      // optional: validate if universe known
-      if (state.universe.length && !state.universe.includes(sym)){
-        alert("Šādas monētas nav Binance Futures USDT Perpetual sarakstā: " + sym);
-        return;
-      }
-
-      state.instrument = sym;
-      symbolInput.value = sym;
-
-      // Refresh chart + ws
-      loadChart(state.instrument, state.timeframe);
-      openWS(state.instrument);
-      updateHeader(state.lastPrice, state.latencyMs);
-    }
-
-    function setTimeframe(tf){
-      state.timeframe = tf;
-      loadChart(state.instrument, state.timeframe);
-      // WS is same (price), no need to reopen
-      elTf.textContent = state.timeframe;
-    }
-
-    /******************************************************************
-     * 9) UI EVENTS
-     ******************************************************************/
-    goBtn.addEventListener("click", () => {
-      addToWatch(symbolInput.value);
-      setInstrument(symbolInput.value);
+  loadTradingView(state.symbol, ".P", () => {
+    loadTradingView(state.symbol, "", () => {
+      document.getElementById("chart").innerHTML =
+        "<div style='padding:20px;color:#f00'>No chart available</div>";
+      document.getElementById("chartMode").innerText = "NO CHART";
+      document.getElementById("chartMode").className = "status err";
     });
+  });
+}
 
-    symbolInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter"){
-        addToWatch(symbolInput.value);
-        setInstrument(symbolInput.value);
-      }
-    });
+loadChart();
+</script>
 
-    tfSelect.addEventListener("change", () => setTimeframe(tfSelect.value));
-    refreshTopBtn.addEventListener("click", () => refreshTop10());
-
-    /******************************************************************
-     * 10) BOOT
-     ******************************************************************/
-    async function boot(){
-      try {
-        elConn.textContent = "LOADING…";
-        await fetchUniverse();
-
-        // default watch set
-        setWatch(["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT"]);
-
-        // initial chart + ws
-        loadChart(state.instrument, state.timeframe);
-        openWS(state.instrument);
-
-        // top10 refresh now + every 60s
-        await refreshTop10();
-        setInterval(() => refreshTop10().catch(() => {}), 60_000);
-
-        elConn.textContent = "CONNECTED";
-      } catch (err){
-        console.error(err);
-        elConn.textContent = "ERROR";
-        topMeta.textContent = "error";
-        alert("Kļūda: " + (err?.message || err));
-      }
-    }
-
-    boot();
-  </script>
 </body>
 </html>
