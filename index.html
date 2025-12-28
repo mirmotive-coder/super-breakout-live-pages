@@ -69,6 +69,37 @@
     <div class="score">0</div>
   </div>
 </div>
+<script>
+const demoTop10 = [
+  { symbol: "BTCUSDT", status: "RELOAD", score: 82 },
+  { symbol: "SOLUSDT", status: "READY", score: 74 },
+  { symbol: "OPUSDT", status: "ABSORBING", score: 66 },
+  { symbol: "AVAXUSDT", status: "COMPRESS", score: 58 },
+  { symbol: "ARBUSDT", status: "VACUUM", score: 41 }
+];
 
+const container = document.getElementById("top10");
+container.innerHTML = "";
+
+demoTop10.forEach(item => {
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const statusClass =
+    item.status === "RELOAD" ? "reload" :
+    item.status === "READY" ? "ready" :
+    item.status === "ABSORBING" ? "absorb" :
+    item.status === "COMPRESS" ? "compress" :
+    "vacuum";
+
+  row.innerHTML = `
+    <div class="symbol">${item.symbol}</div>
+    <div class="status ${statusClass}">${item.status}</div>
+    <div class="score">${item.score}</div>
+  `;
+
+  container.appendChild(row);
+});
+</script>
 </body>
 </html>
