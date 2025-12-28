@@ -6,10 +6,37 @@
   <title>Super Breakout LIVE</title>
 
   <style>
+    :root{
+      --bg: #0b0e11;
+      --panel: #0f1318;
+      --text: #cfd3dc;
+      --muted: #9aa4b2;
+      --line: #1e2329;
+      --accent: #2f81f7;
+
+      --vacuum-fill: rgba(0, 255, 150, 0.12);
+      --vacuum-border: rgba(0, 255, 150, 0.60);
+      --vacuum-text: rgba(0, 255, 150, 0.35);
+
+      --compress-fill: rgba(255, 180, 0, 0.18);
+      --compress-border: rgba(255, 180, 0, 0.70);
+      --compress-text: rgba(255, 200, 80, 0.60);
+
+      --sell-fill: rgba(255, 60, 60, 0.12);
+      --sell-border: rgba(255, 60, 60, 0.40);
+      --sell-text: rgba(255, 60, 60, 0.35);
+
+      --buy-fill: rgba(0, 255, 150, 0.10);
+      --buy-border: rgba(0, 255, 150, 0.35);
+      --buy-text: rgba(0, 255, 150, 0.30);
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      background: #0b0e11;
-      color: #cfd3dc;
+      background: var(--bg);
+      color: var(--text);
       font-family: Arial, sans-serif;
     }
 
@@ -17,11 +44,15 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      width: 100vw;
+      overflow: hidden;
     }
 
     #chart-wrapper {
       position: relative;
       flex: 1;
+      min-height: 60vh;
+      background: var(--bg);
     }
 
     #chart {
@@ -29,74 +60,357 @@
       height: 100%;
     }
 
-    #overlay-layer {
+    /* Overlay layers (each is full-screen over chart) */
+    .overlay-layer {
       position: absolute;
       inset: 0;
       pointer-events: none;
     }
+    #vacuum-layer { z-index: 5; }
+    #compress-layer { z-index: 6; }
+    #aggression-layer { z-index: 7; }
 
-    .zone {
+    /* Vacuum zone */
+    .vacuum-zone {
       position: absolute;
       left: 5%;
       width: 90%;
+      background: var(--vacuum-fill);
+      border: 2px solid var(--vacuum-border);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      letter-spacing: 3px;
-    }
-
-    .vacuum {
-      top: 30%;
-      height: 18%;
-      background: rgba(0, 255, 150, 0.12);
-      border: 2px solid rgba(0, 255, 150, 0.6);
-      color: rgba(0, 255, 150, 0.35);
       font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      color: var(--vacuum-text);
+      text-transform: uppercase;
     }
 
-    .compress {
-      top: 55%;
-      height: 48px;
-      background: rgba(255, 180, 0, 0.18);
-      border: 2px solid rgba(255, 180, 0, 0.7);
-      color: rgba(255, 200, 80, 0.6);
-      font-size: 16px;
+    /* Compress zone */
+    .compress-zone {
+      position: absolute;
+      left: 15%;
+      width: 70%;
+      background: var(--compress-fill);
+      border: 2px solid var(--compress-border);
       border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+    }
+    .compress-zone span {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: var(--compress-text);
     }
 
-    #metrics {
+    /* Aggression zones (static placeholder, will be driven by data later) */
+    .aggr-zone {
+      position: absolute;
+      left: 3%;
+      width: 94%;
+      height: 64px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      font-weight: bold;
+      letter-spacing: 4px;
+      font-size: 22px;
+    }
+    .aggr-sell {
+      top: 6%;
+      background: var(--sell-fill);
+      border: 2px solid var(--sell-border);
+      color: var(--sell-text);
+    }
+    .aggr-buy {
+      bottom: 10%;
+      background: var(--buy-fill);
+      border: 2px solid var(--buy-border);
+      color: var(--buy-text);
+    }
+
+    /* Bottom panel */
+    #panel {
+      border-top: 1px solid var(--line);
+      background: var(--panel);
       padding: 12px;
-      border-top: 1px solid #1e2329;
+    }
+
+    h3 {
+      margin: 10px 0 8px;
+      font-size: 16px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .muted { color: var(--muted); }
+
+    .kv {
+      line-height: 1.35;
       font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      padding: 10px 0 4px;
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+    }
+
+    label.cb {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      padding: 4px 0;
+    }
+    input[type="checkbox"]{
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .sliders {
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      margin-top: 10px;
+    }
+
+    .slider {
+      margin: 10px 0;
+    }
+    .slider .top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    input[type="range"]{
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
     }
   </style>
 </head>
 
 <body>
   <div id="app">
-
     <div id="chart-wrapper">
       <div id="chart"></div>
 
-      <div id="overlay-layer">
-        <div class="zone vacuum">VACUUM</div>
-        <div class="zone compress">COMPRESS</div>
+      <!-- Overlay layers -->
+      <div id="vacuum-layer" class="overlay-layer"></div>
+      <div id="compress-layer" class="overlay-layer"></div>
+      <div id="aggression-layer" class="overlay-layer"></div>
+    </div>
+
+    <div id="panel">
+      <div class="kv">
+        <strong>Metodikas</strong><br><br>
+        Savienojums: <b id="conn">LOADING</b><br>
+        Instruments: <b id="sym">BTCUSDT</b><br>
+        Timeframe: <b id="tf">15m</b><br>
+        BTC cena: <b id="last">-</b><br>
+        Latency: <b id="lat">-</b>
+      </div>
+
+      <div class="controls">
+        <h3>Kontrole</h3>
+        <label class="cb"><input id="toggleVacuum" type="checkbox" checked /> Vacuum</label>
+        <label class="cb"><input id="toggleCompress" type="checkbox" checked /> Compress</label>
+        <label class="cb"><input id="toggleAggression" type="checkbox" checked /> Aggression</label>
+      </div>
+
+      <div class="sliders">
+        <h3>Kalibrācija</h3>
+
+        <div class="slider">
+          <div class="top"><span>Vacuum pozīcija</span><span id="vacTopVal">35%</span></div>
+          <input id="vacTop" type="range" min="0" max="90" value="35" />
+        </div>
+
+        <div class="slider">
+          <div class="top"><span>Vacuum augstums</span><span id="vacHVal">18%</span></div>
+          <input id="vacH" type="range" min="5" max="60" value="18" />
+        </div>
+
+        <div class="slider">
+          <div class="top"><span>Compress pozīcija</span><span id="cmpTopVal">55%</span></div>
+          <input id="cmpTop" type="range" min="0" max="90" value="55" />
+        </div>
+
+        <div class="slider">
+          <div class="top"><span>Compress biezums</span><span id="cmpHVal">48px</span></div>
+          <input id="cmpH" type="range" min="18" max="120" value="48" />
+        </div>
+
+        <div class="note">
+          Šobrīd te ir “forma” (vizuālais karkass) + iekšējais datu modelis.
+          Nākamais solis būs Binance datu plūsma un top-10 atlase pēc mūsu nosacījumiem.
+        </div>
       </div>
     </div>
-
-    <div id="metrics">
-      <strong>Metodikas</strong><br><br>
-      Savienojums: <b>LIVE</b><br>
-      Instruments: <b>BTCUSDT</b><br>
-      Timeframe: <b>15m</b><br>
-      (Forma / karkass)
-    </div>
-
   </div>
 
+  <!-- TradingView -->
   <script src="https://s3.tradingview.com/tv.js"></script>
+
   <script>
+    /******************************************************************
+     * 1) UI ELEMENTS
+     ******************************************************************/
+    const elConn = document.getElementById("conn");
+    const elSym  = document.getElementById("sym");
+    const elTf   = document.getElementById("tf");
+    const elLast = document.getElementById("last");
+    const elLat  = document.getElementById("lat");
+
+    const vacuumLayer = document.getElementById("vacuum-layer");
+    const compressLayer = document.getElementById("compress-layer");
+    const aggressionLayer = document.getElementById("aggression-layer");
+
+    const toggleVacuum = document.getElementById("toggleVacuum");
+    const toggleCompress = document.getElementById("toggleCompress");
+    const toggleAggression = document.getElementById("toggleAggression");
+
+    const vacTop = document.getElementById("vacTop");
+    const vacH = document.getElementById("vacH");
+    const cmpTop = document.getElementById("cmpTop");
+    const cmpH = document.getElementById("cmpH");
+
+    const vacTopVal = document.getElementById("vacTopVal");
+    const vacHVal = document.getElementById("vacHVal");
+    const cmpTopVal = document.getElementById("cmpTopVal");
+    const cmpHVal = document.getElementById("cmpHVal");
+
+    /******************************************************************
+     * 2) VISUAL OVERLAYS (placeholders)
+     ******************************************************************/
+    const vacuumBox = document.createElement("div");
+    vacuumBox.className = "vacuum-zone";
+    vacuumBox.textContent = "VACUUM";
+    vacuumLayer.appendChild(vacuumBox);
+
+    const compressBox = document.createElement("div");
+    compressBox.className = "compress-zone";
+    const compressLabel = document.createElement("span");
+    compressLabel.textContent = "COMPRESS";
+    compressBox.appendChild(compressLabel);
+    compressLayer.appendChild(compressBox);
+
+    const sellAgg = document.createElement("div");
+    sellAgg.className = "aggr-zone aggr-sell";
+    sellAgg.textContent = "SELL AGGRESSION";
+    aggressionLayer.appendChild(sellAgg);
+
+    const buyAgg = document.createElement("div");
+    buyAgg.className = "aggr-zone aggr-buy";
+    buyAgg.textContent = "BUY AGGRESSION";
+    aggressionLayer.appendChild(buyAgg);
+
+    function applyCalibration() {
+      const vTop = Number(vacTop.value);
+      const vH = Number(vacH.value);
+      const cTop = Number(cmpTop.value);
+      const cH = Number(cmpH.value);
+
+      vacTopVal.textContent = vTop + "%";
+      vacHVal.textContent = vH + "%";
+      cmpTopVal.textContent = cTop + "%";
+      cmpHVal.textContent = cH + "px";
+
+      vacuumBox.style.top = vTop + "%";
+      vacuumBox.style.height = vH + "%";
+
+      compressBox.style.top = cTop + "%";
+      compressBox.style.height = cH + "px";
+    }
+
+    [vacTop, vacH, cmpTop, cmpH].forEach(inp => inp.addEventListener("input", applyCalibration));
+    applyCalibration();
+
+    function applyToggles(){
+      vacuumLayer.style.display = toggleVacuum.checked ? "block" : "none";
+      compressLayer.style.display = toggleCompress.checked ? "block" : "none";
+      aggressionLayer.style.display = toggleAggression.checked ? "block" : "none";
+    }
+    [toggleVacuum, toggleCompress, toggleAggression].forEach(cb => cb.addEventListener("change", applyToggles));
+    applyToggles();
+
+    /******************************************************************
+     * 3) INTERNAL DATA MODEL (NO BINANCE YET)
+     *    Candle buffer + simple update hooks.
+     ******************************************************************/
+    const state = {
+      instrument: "BTCUSDT",
+      timeframe: "15m",
+      mode: "LIVE",
+      lastPrice: null,
+      latencyMs: null,
+      candles: [],           // { t, o, h, l, c, v }
+      maxCandles: 600
+    };
+
+    function pushCandle(candle) {
+      state.candles.push(candle);
+      if (state.candles.length > state.maxCandles) state.candles.shift();
+    }
+
+    function updateLast(price, latencyMs) {
+      state.lastPrice = price;
+      state.latencyMs = latencyMs;
+
+      elSym.textContent = state.instrument;
+      elTf.textContent = state.timeframe;
+      elLast.textContent = (price == null) ? "-" : Number(price).toFixed(2);
+      elLat.textContent = (latencyMs == null) ? "-" : (latencyMs + "ms");
+    }
+
+    // Temporary: simulate "LIVE" so UI works even before Binance is connected
+    function bootstrapFakeData() {
+      elConn.textContent = "CONNECTED";
+      const base = 87500;
+
+      // seed candles
+      const now = Date.now();
+      for (let i = 40; i >= 1; i--) {
+        const t = now - i * 60_000 * 15; // 15m steps
+        const o = base + (Math.random() - 0.5) * 400;
+        const c = o + (Math.random() - 0.5) * 250;
+        const h = Math.max(o, c) + Math.random() * 120;
+        const l = Math.min(o, c) - Math.random() * 120;
+        const v = 100 + Math.random() * 900;
+        pushCandle({ t, o, h, l, c, v });
+      }
+
+      // fake ticks
+      setInterval(() => {
+        const p = base + (Math.random() - 0.5) * 600;
+        updateLast(p, 0);
+      }, 1000);
+    }
+
+    /******************************************************************
+     * 4) TRADINGVIEW WIDGET
+     ******************************************************************/
     new TradingView.widget({
       container_id: "chart",
       autosize: true,
@@ -108,9 +422,13 @@
       locale: "en",
       hide_top_toolbar: false,
       hide_legend: true,
-      allow_symbol_change: false,
+      allow_symbol_change: true,
       save_image: false
     });
+
+    bootstrapFakeData();
+
+    console.log("Initialized: UI + overlays + internal data model", state);
   </script>
 </body>
 </html>
