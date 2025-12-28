@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Super Breakout LIVE — Top10 + Uzraudzība (All Binance Futures)</title>
+  <title>Super Breakout LIVE — LOCKED SCORE v1 (15m)</title>
 
   <!-- Lightweight Charts (TradingView open-source render engine) -->
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -55,7 +55,7 @@
     @media (min-width: 980px){
       #main{flex-direction:row;}
       #leftPane{
-        width:420px;max-width:420px;min-width:360px;
+        width:440px;max-width:440px;min-width:360px;
         border-bottom:none;border-right:1px solid var(--line);
         height:100%;
         overflow:auto;
@@ -121,6 +121,7 @@
     .bReady{border-color:rgba(0,255,150,0.35);color:var(--ok);}
     .bWatch{border-color:rgba(255,200,80,0.35);color:var(--warn);}
     .bUnstable{border-color:rgba(255,120,120,0.35);color:var(--bad);}
+    .bWarm{border-color:rgba(160,160,160,0.35);color:rgba(200,200,200,0.85);}
 
     /* Monitor */
     #monitorHeader{
@@ -144,6 +145,8 @@
     }
     .kpi .t{font-size:12px;color:var(--muted);margin-bottom:6px;}
     .kpi .v{font-size:14px;font-weight:700;}
+
+    .smallNote{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.35;}
   </style>
 </head>
 
@@ -159,8 +162,16 @@
         <div id="conn" class="pill warn">Connecting...</div>
       </div>
       <div class="row">
-        <div>Universe</div>
-        <div class="pill">Binance USDT-M Futures (visi pāri)</div>
+        <div>Datu režīms</div>
+        <div class="pill">LIVE WebSocket Only</div>
+      </div>
+      <div class="row">
+        <div>Score</div>
+        <div class="pill">LOCKED v1 · TF: <b>15m</b></div>
+      </div>
+      <div class="row">
+        <div>Kandidāti</div>
+        <div class="mono"><b id="candCount">0</b> / 50</div>
       </div>
       <div class="row">
         <div>Atjaunojums</div>
@@ -169,12 +180,8 @@
 
       <div class="controls">
         <input id="symbolInput" type="text" value="BTCUSDT" spellcheck="false" inputmode="text" />
-        <select id="tfSelect">
-          <option value="1m">1m</option>
-          <option value="5m">5m</option>
-          <option value="15m" selected>15m</option>
-          <option value="1h">1h</option>
-          <option value="4h">4h</option>
+        <select id="tfSelect" disabled>
+          <option value="15m" selected>15m (LOCKED)</option>
         </select>
         <button id="openBtn">Atvērt uzraudzību</button>
       </div>
@@ -183,29 +190,29 @@
         <div class="toggle">
           <div>
             <b>VACUUM</b>
-            <small>Price-aware zonas (šobrīd: “alpha”)</small>
+            <small>Tukšums starp cenām (FVG tipa gaps)</small>
           </div>
           <div id="swVac" class="switch on"><div class="knob"></div></div>
         </div>
         <div class="toggle">
           <div>
             <b>COMPRESS</b>
-            <small>Šaurs range (šobrīd: “alpha”)</small>
+            <small>Šaurs range pret ATR normu</small>
           </div>
           <div id="swCmp" class="switch on"><div class="knob"></div></div>
         </div>
         <div class="toggle">
           <div>
             <b>AGGRESSION</b>
-            <small>Buy/Sell līmeņi (šobrīd: “alpha”)</small>
+            <small>Buy/Sell līmeņi no lieliem ķermeņiem</small>
           </div>
           <div id="swAgr" class="switch on"><div class="knob"></div></div>
         </div>
       </div>
 
-      <div class="muted" style="font-size:12px;margin-top:8px;">
-        TOP-10 šobrīd tiek rēķināts no LIVE markPrice plūsmas ar “ātro” SCORE (kompresija/volatilitāte + impulsu proxies).
-        Nākamais solis: lockojam precīzo tavu loģiku (vacuum/absorption/false-filter).
+      <div class="smallNote">
+        <b>Piezīme:</b> Top-10 tiek rēķināts no 15m sveču datiem tikai kandidātiem (Top-50).
+        Pirmajās minūtēs redzēsi <span class="badge bWarm">WARMING</span>, līdz savācas pietiekams sveču buferis.
       </div>
 
       <table>
@@ -222,8 +229,8 @@
         </tbody>
       </table>
 
-      <div class="muted" style="font-size:12px;margin-top:10px;">
-        Klikšķini uz rindas — atvērsies uzraudzības logs ar grafiku un zonām.
+      <div class="smallNote">
+        Klikšķini uz rindas — atvērsies uzraudzības logs ar grafiku un zonām, bez reload.
       </div>
     </div>
 
@@ -247,24 +254,24 @@
 
       <div id="monitorFooter">
         <div class="muted" style="font-size:12px;">
-          Uzraudzība ir fokusēta uz vienu pāri. Screener netaisa reload un nemaina lapu.
+          Uzraudzība fokusēta uz vienu pāri. Screener netaisa reload un nemaina lapu.
         </div>
 
         <div class="kpiGrid">
           <div class="kpi">
-            <div class="t">VACUUM (alpha)</div>
+            <div class="t">VACUUM</div>
             <div class="v" id="kpiVac">—</div>
           </div>
           <div class="kpi">
-            <div class="t">COMPRESS (alpha)</div>
+            <div class="t">COMPRESS</div>
             <div class="v" id="kpiCmp">—</div>
           </div>
           <div class="kpi">
-            <div class="t">AGGRESSION (alpha)</div>
+            <div class="t">AGGRESSION</div>
             <div class="v" id="kpiAgr">—</div>
           </div>
           <div class="kpi">
-            <div class="t">SCORE (alpha)</div>
+            <div class="t">SCORE (LOCKED v1)</div>
             <div class="v" id="kpiScore">—</div>
           </div>
         </div>
@@ -276,17 +283,20 @@
 
 <script>
 /**
- * CORE PRINCIPLES (this build):
- * - ONE global WS for ALL pairs: !markPrice@arr
- * - ONE kline WS for ACTIVE symbol (chart)
- * - TOP10 refresh throttled to avoid UI lag
- * - No backend required
+ * LOCKED SCORE v1 (15m) — WebSocket only, no REST:
+ * - Global WS: !markPrice@arr for all pairs
+ * - Candidate Engine: Top-50 by fast proxy from markPrice returns
+ * - One combined WS: kline_15m streams for the Top-50 candidates (+ active symbol)
+ * - Score v1 computed from candle buffers:
+ *   COMPRESS (range/ATR), VACUUM (gaps), AGGRESSION (big bodies),
+ *   ABSORPTION (post-impulse stall), CHAOS penalty
  */
 
 const UI = {
   conn: document.getElementById("conn"),
   lastUpdate: document.getElementById("lastUpdate"),
   top10Body: document.getElementById("top10Body"),
+  candCount: document.getElementById("candCount"),
 
   symbolInput: document.getElementById("symbolInput"),
   tfSelect: document.getElementById("tfSelect"),
@@ -322,7 +332,7 @@ function normalizeSymbol(s){
 }
 function toggleSwitch(sw){
   sw.classList.toggle("on");
-  renderOverlays(); // redraw
+  renderOverlaysForActive();
 }
 UI.swVac.addEventListener("click", ()=>toggleSwitch(UI.swVac));
 UI.swCmp.addEventListener("click", ()=>toggleSwitch(UI.swCmp));
@@ -340,28 +350,25 @@ const chart = LightweightCharts.createChart(chartEl, {
   crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   handleScroll:true, handleScale:true,
 });
-const candles = chart.addCandlestickSeries({
+const candlesSeries = chart.addCandlestickSeries({
   upColor: "#00c084",
   downColor: "#f6465d",
   wickUpColor: "#00c084",
   wickDownColor: "#f6465d",
   borderVisible: false,
 });
-
-function resizeChart(){
-  chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
-}
+function resizeChart(){ chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight }); }
 window.addEventListener("resize", resizeChart);
 resizeChart();
 
-/* Overlay lines (price-aware) */
+/* Price-aware overlay lines */
 let overlayLines = [];
 function clearOverlayLines(){
-  try{ overlayLines.forEach(l => candles.removePriceLine(l)); }catch(_){}
+  try{ overlayLines.forEach(l => candlesSeries.removePriceLine(l)); }catch(_){}
   overlayLines = [];
 }
 function addLine(price, color, title){
-  const line = candles.createPriceLine({
+  const line = candlesSeries.createPriceLine({
     price,
     color,
     lineWidth: 2,
@@ -374,77 +381,41 @@ function addLine(price, color, title){
 
 /* =======================
    GLOBAL WS: ALL PAIRS
-   wss://fstream.binance.com/ws/!markPrice@arr
 ======================= */
 let wsAll = null;
 let wsAllReconnect = null;
 
-/**
- * Minimal per-symbol state (fast):
- * - last price
- * - ring buffer of last returns for volatility proxy
- */
-const SYMBOLS = new Map(); // symbol -> { p, t, rets[], lastP, score, status }
 const RET_WINDOW = 20;
-
-/* Utility: push return into ring buffer */
+const SYMBOLS = new Map(); // symbol -> { p, t, rets[], lastP }
 function pushRet(st, ret){
   st.rets.push(ret);
   if(st.rets.length > RET_WINDOW) st.rets.shift();
 }
 
-/* Fast score (alpha) from markPrice-only:
-   - volatility proxy: std of returns
-   - compress proxy: inverse volatility
-   - impulse proxy: abs last return / (std+eps)
-   SCORE 0..100
-*/
-function computeScore(st){
+/* Fast proxy score for candidate selection (not the final locked score) */
+function fastProxyScore(st){
   const rets = st.rets;
-  if(!rets || rets.length < 8) return {score:0, status:"UNSTABLE", vac:"—", cmp:"—", agr:"—"};
+  if(!rets || rets.length < 8) return 0;
 
-  // mean
   let m = 0;
   for(const r of rets) m += r;
   m /= rets.length;
 
-  // variance
   let v = 0;
   for(const r of rets) v += (r - m) * (r - m);
   v /= rets.length;
   const std = Math.sqrt(v);
-
   const lastR = rets[rets.length-1] || 0;
-  const vol = std; // proxy
-  const compress = 1 / (vol + 1e-6); // higher = more compress
+
+  const vol = std;
+  const compress = 1 / (vol + 1e-6);
   const impulse = Math.abs(lastR) / (std + 1e-6);
 
-  // Normalize-ish (alpha, tunable)
-  // vol in returns scale ~ 0..0.01 typical; map
   const volN = Math.max(0, Math.min(1, vol / 0.01));
-  const cmpN = Math.max(0, Math.min(1, compress / 800)); // tune
-  const impN = Math.max(0, Math.min(1, impulse / 6));    // tune
+  const cmpN = Math.max(0, Math.min(1, compress / 800));
+  const impN = Math.max(0, Math.min(1, impulse / 6));
 
-  // "Vacuum" proxy from markPrice only is weak; use "impulse potential" as placeholder
-  const vacN = Math.max(0, Math.min(1, (impN * 0.6 + (1 - volN) * 0.4)));
-
-  // Score weights (alpha) — will be replaced by your locked formula later
-  const score = Math.round(
-    (cmpN * 45) +         // compress heavy
-    (vacN * 35) +         // vacuum proxy
-    (impN * 20)           // aggression proxy
-  );
-
-  let status = "WATCH";
-  if(score >= 72) status = "READY";
-  if(score < 35) status = "UNSTABLE";
-
-  // KPI strings (alpha)
-  const cmpTxt = Math.round(cmpN*100) + "%";
-  const vacTxt = Math.round(vacN*100) + "%";
-  const agrTxt = Math.round(impN*100) + "%";
-
-  return { score, status, vac: vacTxt, cmp: cmpTxt, agr: agrTxt };
+  return Math.round((cmpN*50) + (impN*30) + ((1-volN)*20));
 }
 
 function connectAll(){
@@ -466,20 +437,16 @@ function connectAll(){
 
       const now = Date.now();
       for(const x of arr){
-        // Binance markPrice event fields: s(symbol), p(markPrice), T(eventTime) or E
         const sym = x.s;
         const p = parseFloat(x.p);
         if(!sym || !Number.isFinite(p)) continue;
-
-        // Keep USDT-M style only; exclude weird
         if(!sym.endsWith("USDT")) continue;
 
         let st = SYMBOLS.get(sym);
         if(!st){
-          st = { p, t: now, rets: [], lastP: p, score:0, status:"UNSTABLE", vac:"—", cmp:"—", agr:"—" };
+          st = { p, t: now, rets: [], lastP: p, proxy: 0 };
           SYMBOLS.set(sym, st);
         } else {
-          // compute return
           const ret = (p - st.lastP) / (st.lastP || p);
           if(Number.isFinite(ret) && Math.abs(ret) < 0.2){
             pushRet(st, ret);
@@ -488,29 +455,19 @@ function connectAll(){
           st.p = p;
           st.t = now;
         }
-
-        // Update alpha score cheaply
-        const r = computeScore(st);
-        st.score = r.score;
-        st.status = r.status;
-        st.vac = r.vac;
-        st.cmp = r.cmp;
-        st.agr = r.agr;
+        st.proxy = fastProxyScore(st);
       }
 
       UI.lastUpdate.textContent = nowTime();
-      scheduleTop10Render();
 
-      // update active price quickly if present
-      const a = STATE.symbol;
-      const stA = SYMBOLS.get(a);
+      // update active price quickly
+      const stA = SYMBOLS.get(STATE.activeSymbol);
       if(stA) UI.activePrice.textContent = stA.p.toFixed(6);
 
     }catch(_){}
   };
 
   wsAll.onerror = () => setConn("Degraded");
-
   wsAll.onclose = () => {
     setConn("Disconnected");
     wsAllReconnect = setTimeout(connectAll, 1200);
@@ -518,290 +475,539 @@ function connectAll(){
 }
 
 /* =======================
-   TOP10 RENDER (THROTTLED)
+   CANDIDATE ENGINE (Top-50)
 ======================= */
-let top10Timer = null;
-function scheduleTop10Render(){
-  if(top10Timer) return;
-  top10Timer = setTimeout(()=>{
-    top10Timer = null;
-    renderTop10();
-  }, 600); // throttle UI
-}
-
-function statusBadge(s){
-  if(s==="READY") return `<span class="badge bReady">READY</span>`;
-  if(s==="WATCH") return `<span class="badge bWatch">WATCH</span>`;
-  return `<span class="badge bUnstable">UNSTABLE</span>`;
-}
-
-function renderTop10(){
-  // Build array from map
+const CANDIDATE_LIMIT = 50;
+let candidateSet = new Set(); // symbols selected
+function recomputeCandidates(){
+  // build list by proxy
   const all = [];
   SYMBOLS.forEach((st, sym)=>{
-    // Filter out ultra-new with no data
     if(st.rets.length < 8) return;
-    all.push({ sym, score: st.score, status: st.status, p: st.p });
+    all.push({ sym, proxy: st.proxy || 0 });
   });
+  all.sort((a,b)=>b.proxy - a.proxy);
+  const top = all.slice(0, CANDIDATE_LIMIT).map(x=>x.sym);
 
-  if(all.length < 10){
-    UI.top10Body.innerHTML = `<tr><td colspan="4" class="muted">Vēl krājas dati... (${all.length})</td></tr>`;
-    return;
-  }
+  candidateSet = new Set(top);
+  // always include active symbol
+  candidateSet.add(STATE.activeSymbol);
 
-  all.sort((a,b)=>b.score - a.score);
-  const top = all.slice(0,10);
-
-  UI.top10Body.innerHTML = top.map((x, i)=>`
-    <tr data-sym="${x.sym}">
-      <td class="mono">${i+1}</td>
-      <td class="mono"><b>${x.sym}</b><div class="muted" style="font-size:12px;margin-top:2px;">Cena: ${x.p.toFixed(6)}</div></td>
-      <td class="mono"><b>${x.score}</b></td>
-      <td>${statusBadge(x.status)}</td>
-    </tr>
-  `).join("");
-
-  // attach click
-  UI.top10Body.querySelectorAll("tr[data-sym]").forEach(tr=>{
-    tr.addEventListener("click", ()=>{
-      const sym = tr.getAttribute("data-sym");
-      if(sym) openMonitor(sym, UI.tfSelect.value);
-    });
-  });
+  UI.candCount.textContent = String(Math.min(candidateSet.size, CANDIDATE_LIMIT));
+  KLINE.ensureStreams(candidateSet);
 }
 
-/* =======================
-   ACTIVE MONITOR (KLINE WS)
-======================= */
-let wsKline = null;
-let wsKlineReconnect = null;
+/* Run candidate refresh periodically */
+setInterval(recomputeCandidates, 4000);
 
-const STATE = {
-  symbol: "BTCUSDT",
-  tf: "15m",
-  buf: [],
-  maxBuf: 260,
+/* =======================
+   KLINE COMBINED WS (15m)
+======================= */
+const TF_LOCKED = "15m";
+const BUF_MAX = 260;
+
+// candlesBySymbol: symbol -> [{time,open,high,low,close}]
+const candlesBySymbol = new Map();
+
+function streamName(sym){
+  return `${sym.toLowerCase()}@kline_${TF_LOCKED}`;
+}
+function combinedURL(streams){
+  const s = streams.join("/");
+  return `wss://fstream.binance.com/stream?streams=${s}`;
+}
+
+const KLINE = {
+  ws: null,
+  reconnectTimer: null,
+  streams: [],         // current streams list
+  symSet: new Set(),   // current symbols
+  ensureStreams(symSet){
+    // limit to 50 + active
+    const arr = Array.from(symSet).slice(0, CANDIDATE_LIMIT + 1);
+    const streams = arr.map(streamName).sort();
+
+    // compare with existing
+    const same = (streams.length === this.streams.length) && streams.every((v,i)=>v===this.streams[i]);
+    if(same) return;
+
+    this.streams = streams;
+    this.symSet = new Set(arr);
+    this.connect();
+  },
+  connect(){
+    if(this.reconnectTimer){ clearTimeout(this.reconnectTimer); this.reconnectTimer=null; }
+    try{ if(this.ws) this.ws.close(); }catch(_){}
+
+    if(!this.streams.length) return;
+
+    const url = combinedURL(this.streams);
+    this.ws = new WebSocket(url);
+
+    this.ws.onmessage = (ev)=>{
+      try{
+        const msg = JSON.parse(ev.data);
+        if(!msg || !msg.data || !msg.data.k) return;
+
+        const k = msg.data.k;
+        const sym = msg.data.s || k.s;
+        if(!sym) return;
+
+        const timeSec = Math.floor(k.t / 1000);
+        const c = {
+          time: timeSec,
+          open: parseFloat(k.o),
+          high: parseFloat(k.h),
+          low:  parseFloat(k.l),
+          close: parseFloat(k.c),
+        };
+        if(!Number.isFinite(c.open)||!Number.isFinite(c.high)||!Number.isFinite(c.low)||!Number.isFinite(c.close)) return;
+
+        let buf = candlesBySymbol.get(sym);
+        if(!buf){
+          buf = [];
+          candlesBySymbol.set(sym, buf);
+        }
+        const last = buf[buf.length-1];
+        if(!last || last.time < c.time){
+          buf.push(c);
+          if(buf.length > BUF_MAX) buf.shift();
+        } else if(last.time === c.time){
+          buf[buf.length-1] = c;
+        }
+
+        // If active symbol, update chart in real time
+        if(sym === STATE.activeSymbol){
+          candlesSeries.update(c);
+          UI.activePrice.textContent = c.close.toFixed(6);
+          scheduleActiveRecalc();
+        }
+
+      }catch(_){}
+    };
+
+    this.ws.onclose = ()=>{
+      this.reconnectTimer = setTimeout(()=>this.connect(), 1400);
+    };
+  }
 };
 
-function klineURL(symbol, tf){
-  const sym = normalizeSymbol(symbol).toLowerCase();
-  return `wss://fstream.binance.com/ws/${sym}@kline_${tf}`;
-}
-
-function connectKline(){
-  if(wsKlineReconnect){ clearTimeout(wsKlineReconnect); wsKlineReconnect=null; }
-  try{ if(wsKline) wsKline.close(); }catch(_){}
-
-  const url = klineURL(STATE.symbol, STATE.tf);
-  wsKline = new WebSocket(url);
-
-  wsKline.onopen = () => { /* ok */ };
-
-  wsKline.onmessage = (ev) => {
-    try{
-      const msg = JSON.parse(ev.data);
-      if(!msg || !msg.k) return;
-      const k = msg.k;
-
-      const timeSec = Math.floor(k.t / 1000);
-      const c = {
-        time: timeSec,
-        open: parseFloat(k.o),
-        high: parseFloat(k.h),
-        low:  parseFloat(k.l),
-        close: parseFloat(k.c),
-      };
-
-      candles.update(c);
-
-      // buffer
-      const b = STATE.buf;
-      const last = b[b.length-1];
-      if(!last || last.time < c.time){
-        b.push(c);
-        if(b.length > STATE.maxBuf) b.shift();
-      } else if(last.time === c.time){
-        b[b.length-1] = c;
-      }
-
-      // price label
-      UI.activePrice.textContent = c.close.toFixed(6);
-
-      scheduleOverlayRecalc();
-
-    }catch(_){}
-  };
-
-  wsKline.onclose = () => {
-    wsKlineReconnect = setTimeout(connectKline, 1200);
-  };
-}
-
-function openMonitor(symbol, tf){
-  const sym = normalizeSymbol(symbol);
-  const tff = tf || "15m";
-  UI.symbolInput.value = sym; // keep input synced
-
-  STATE.symbol = sym;
-  STATE.tf = tff;
-
-  UI.activeSymbol.textContent = sym;
-  UI.activeTf.textContent = tff;
-
-  // reset chart
-  STATE.buf = [];
-  candles.setData([]);
-  clearOverlayLines();
-  UI.kpiVac.textContent = "—";
-  UI.kpiCmp.textContent = "—";
-  UI.kpiAgr.textContent = "—";
-  UI.kpiScore.textContent = "—";
-
-  connectKline();
-  // also update price from global
-  const st = SYMBOLS.get(sym);
-  if(st) UI.activePrice.textContent = st.p.toFixed(6);
-
-  // keep chart at realtime
-  chart.timeScale().scrollToRealTime();
-}
-
-/* Manual open */
-UI.openBtn.addEventListener("click", ()=>{
-  let sym = normalizeSymbol(UI.symbolInput.value);
-  if(!sym.endsWith("USDT")) sym += "USDT";
-  openMonitor(sym, UI.tfSelect.value);
-});
-
 /* =======================
-   OVERLAYS (ALPHA) — price-aware lines
-   (Next step: lock true vacuum/compress/aggression formulas)
+   LOCKED SCORE v1 (15m)
 ======================= */
-let overlayTimer = null;
-function scheduleOverlayRecalc(){
-  if(overlayTimer) return;
-  overlayTimer = setTimeout(()=>{
-    overlayTimer = null;
-    renderOverlays();
-  }, 350);
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+function calcATR(buf, n){
+  if(buf.length < n+1) return null;
+  let sum = 0;
+  for(let i=buf.length-n; i<buf.length; i++){
+    const c = buf[i];
+    const prev = buf[i-1];
+    const tr = Math.max(
+      c.high - c.low,
+      Math.abs(c.high - prev.close),
+      Math.abs(c.low - prev.close)
+    );
+    sum += tr;
+  }
+  return sum / n;
 }
 
-function calcCompressAlpha(buf){
+function calcCompress(buf){
+  // Compress based on range vs ATR norm
   const N = 40;
-  if(buf.length < N) return null;
+  const ATR_N = 40;
+  if(buf.length < Math.max(N, ATR_N)+2) return null;
+
+  const atr = calcATR(buf, ATR_N);
+  if(!atr || atr <= 0) return null;
+
   const slice = buf.slice(-N);
-  const ranges = slice.map(c => (c.high - c.low));
-  const avg = ranges.reduce((a,b)=>a+b,0)/ranges.length;
-  const lastRange = ranges[ranges.length-1];
-  const ratio = avg > 0 ? (lastRange / avg) : 1;
-  const compressPct = Math.max(0, Math.min(100, (1 - ratio) * 100));
-  const bandLow = slice[slice.length-1].low;
-  const bandHigh = slice[slice.length-1].high;
-  return { compressPct, bandLow, bandHigh };
+  let high = -Infinity, low = Infinity;
+  for(const c of slice){ if(c.high>high) high=c.high; if(c.low<low) low=c.low; }
+
+  const lastClose = slice[slice.length-1].close;
+  const range = high - low;
+  const rangeN = range / (lastClose || 1);
+  const atrN = atr / (lastClose || 1);
+
+  const X = 1.2; // compress threshold multiplier (LOCKED v1 constant)
+  const active = (rangeN < X * atrN);
+
+  const strength = clamp((1 - (rangeN / (X * atrN))) * 100, 0, 100);
+
+  return { active, strength, low, high, atr };
 }
 
-function calcVacuumAlpha(buf){
-  // FVG-like from candles (works properly with klines)
+function calcVacuumZones(buf){
+  // Vacuum = gap between prices (FVG-like), not wick.
+  // Bull vacuum: prev.high < next.low => zone [prev.high, next.low]
+  // Bear vacuum: prev.low > next.high => zone [next.high, prev.low]
   if(buf.length < 12) return [];
   const zones = [];
   for(let i=2; i<buf.length-2; i++){
     const prev = buf[i-1];
     const next = buf[i+1];
     if(prev.high < next.low){
-      zones.push({ from: prev.high, to: next.low, dir:"UP" });
+      zones.push({ from: prev.high, to: next.low, dir: "UP", idx: i });
     } else if(prev.low > next.high){
-      zones.push({ from: next.high, to: prev.low, dir:"DOWN" });
+      zones.push({ from: next.high, to: prev.low, dir: "DOWN", idx: i });
     }
   }
-  zones.sort((a,b)=>Math.abs(b.to-b.from) - Math.abs(a.to-a.from));
-  return zones.slice(0,2);
+  // prefer biggest first (then newest)
+  zones.sort((a,b)=>{
+    const sa = Math.abs(a.to-a.from);
+    const sb = Math.abs(b.to-b.from);
+    if(sb !== sa) return sb - sa;
+    return b.idx - a.idx;
+  });
+  return zones.slice(0, 3);
 }
 
-function calcAggressionAlpha(buf){
+function calcAggressionLevels(buf){
+  // Aggression = big bodies (no EMA)
   const N = 30;
-  if(buf.length < N) return [];
+  if(buf.length < N+5) return [];
   const slice = buf.slice(-N);
   const bodies = slice.map(c => Math.abs(c.close - c.open));
-  const avg = bodies.reduce((a,b)=>a+b,0)/bodies.length;
+  const avg = bodies.reduce((a,b)=>a+b,0) / bodies.length;
+  if(!avg || avg<=0) return [];
 
-  const out = [];
-  for(let i=slice.length-8; i<slice.length; i++){
+  const A = 2.2; // threshold
+  const levels = [];
+  for(let i=slice.length-10; i<slice.length; i++){
     const c = slice[i];
     const body = Math.abs(c.close - c.open);
-    if(avg > 0 && body > avg * 2.2){
-      out.push({ price: c.close, side: (c.close >= c.open) ? "BUY" : "SELL" });
+    if(body > avg * A){
+      levels.push({ price: c.close, side: (c.close >= c.open) ? "BUY" : "SELL" });
     }
   }
-  return out.slice(-2);
+  return levels.slice(-4);
 }
 
-function renderOverlays(){
+function calcAbsorption(buf, atr){
+  // Absorption proxy:
+  // If we had a strong impulse (close - close_5)/ATR > 2
+  // and then the last 3-4 candles stall (small net progress) -> absorption high
+  if(buf.length < 16 || !atr || atr<=0) return { level: 0, note: "—" };
+
+  const last = buf[buf.length-1];
+  const c5 = buf[buf.length-6]?.close;
+  if(!c5) return { level: 0, note: "—" };
+
+  const impulse = (last.close - c5) / atr; // positive or negative
+  const impAbs = Math.abs(impulse);
+
+  if(impAbs < 2.0) return { level: 0, note: "nav" };
+
+  // stall check: last 4 candles net move small relative to ATR
+  const c4 = buf[buf.length-5]?.close;
+  const net = Math.abs(last.close - c4);
+  const stall = net < (0.35 * atr);
+
+  // counter pressure: count opposite bodies in last 4
+  let opp = 0;
+  for(let i=buf.length-4; i<buf.length; i++){
+    const c = buf[i];
+    const dir = (c.close >= c.open) ? 1 : -1;
+    const impDir = (impulse >= 0) ? 1 : -1;
+    if(dir !== impDir) opp++;
+  }
+
+  let level = 0;
+  if(stall) level += 60;
+  if(opp >= 2) level += 40;
+
+  level = clamp(level, 0, 100);
+  const note = level >= 70 ? "AUGSTA" : (level >= 40 ? "VIDĒJA" : "ZEMA");
+  return { level, note };
+}
+
+function calcChaosPenalty(buf, atr){
+  // chaos: too many alternations / aggression flips
+  if(buf.length < 20 || !atr || atr<=0) return 0;
+
+  const N = 14;
+  const slice = buf.slice(-N);
+  let flips = 0;
+  let lastDir = null;
+  for(const c of slice){
+    const dir = (c.close >= c.open) ? 1 : -1;
+    if(lastDir !== null && dir !== lastDir) flips++;
+    lastDir = dir;
+  }
+  // normalized
+  const chaos = clamp((flips / (N-1)) * 100, 0, 100);
+  // convert to penalty 0..30
+  return Math.round(clamp(chaos * 0.30, 0, 30));
+}
+
+function lockedScoreV1(sym){
+  const buf = candlesBySymbol.get(sym);
+  if(!buf || buf.length < 60) {
+    return { ok:false, status:"WARMING", score:0, vac:"—", cmp:"—", agr:"—" };
+  }
+
+  const c = calcCompress(buf);
+  if(!c) return { ok:false, status:"WARMING", score:0, vac:"—", cmp:"—", agr:"—" };
+
+  const zones = calcVacuumZones(buf);
+  const agrLvls = calcAggressionLevels(buf);
+  const abs = calcAbsorption(buf, c.atr);
+  const chaosPen = calcChaosPenalty(buf, c.atr);
+
+  // COMPRESS contribution
+  const compressN = c.active ? (c.strength/100) : (c.strength/200); // if not active, half influence
+
+  // VACUUM contribution (prefer zone near compress bounds)
+  let vacN = 0;
+  let vacTxt = "nav";
+  if(zones.length){
+    const z = zones[0];
+    const size = Math.abs(z.to - z.from);
+    const lastClose = buf[buf.length-1].close;
+    const sizePct = (size / (lastClose||1)) * 100;
+
+    // proximity: if vacuum sits near compress high/low range => stronger
+    const mid = (z.from + z.to)/2;
+    const prox = (mid >= c.low && mid <= c.high) ? 1.0 : 0.7;
+
+    // normalize: 0..1 by size relative to ATR (more objective)
+    const sizeAtr = size / (c.atr||1);
+    const sizeN = clamp(sizeAtr / 2.2, 0, 1); // 2.2 ATR = big
+
+    vacN = clamp((sizeN * prox), 0, 1);
+    vacTxt = `${z.dir} ${sizePct.toFixed(2)}%`;
+  }
+
+  // AGGRESSION quality: do we have clear fuel levels?
+  let agrN = 0;
+  let agrTxt = "nav";
+  if(agrLvls.length){
+    // quality: if we have at least one BUY or SELL big body recently
+    const last = agrLvls[agrLvls.length-1];
+    agrTxt = `${last.side}`;
+    // stronger if level is near compress boundaries (fuel wall)
+    const price = last.price;
+    const near = (price >= (c.low - 0.6*c.atr) && price <= (c.high + 0.6*c.atr)) ? 1.0 : 0.75;
+    agrN = clamp((agrLvls.length / 4) * near, 0, 1);
+  }
+
+  // BreakoutPotential proxy: vacuum size + compress strength synergy
+  const breakoutN = clamp((vacN*0.55 + compressN*0.45), 0, 1);
+
+  // Base score (0..100)
+  let score =
+    (compressN * 35) +
+    (vacN * 25) +
+    (agrN * 20) +
+    (breakoutN * 20);
+
+  // Penalties
+  const absorptionPenalty = Math.round(clamp(abs.level * 0.40, 0, 40)); // up to -40
+  score -= absorptionPenalty;
+  score -= chaosPen;
+
+  score = clamp(Math.round(score), 0, 100);
+
+  // Status
+  let status = "WATCH";
+  if(score >= 72 && c.active) status = "READY";
+  if(score < 35) status = "UNSTABLE";
+  if(!c.active && score < 55) status = "UNSTABLE";
+
+  return {
+    ok:true,
+    score,
+    status,
+    vac: vacTxt,
+    cmp: (c.active ? `${Math.round(c.strength)}%` : `N/A (${Math.round(c.strength)}%)`),
+    agr: agrTxt,
+    absNote: abs.note,
+    absLevel: abs.level,
+    compress: c,
+    vacuumZones: zones,
+    aggression: agrLvls
+  };
+}
+
+/* =======================
+   TOP10 render (LOCKED)
+======================= */
+function badgeHTML(s){
+  if(s==="READY") return `<span class="badge bReady">READY</span>`;
+  if(s==="WATCH") return `<span class="badge bWatch">WATCH</span>`;
+  if(s==="WARMING") return `<span class="badge bWarm">WARMING</span>`;
+  return `<span class="badge bUnstable">UNSTABLE</span>`;
+}
+
+let top10Timer = null;
+function scheduleTop10(){
+  if(top10Timer) return;
+  top10Timer = setTimeout(()=>{
+    top10Timer=null;
+    renderTop10Locked();
+  }, 800);
+}
+
+function renderTop10Locked(){
+  // Score only candidates (Top-50) to keep CPU stable
+  const list = [];
+  candidateSet.forEach(sym=>{
+    const r = lockedScoreV1(sym);
+    if(r.status === "WARMING"){
+      list.push({ sym, score: -1, status:"WARMING", warm:true });
+      return;
+    }
+    list.push({ sym, score: r.score, status: r.status, warm:false, r });
+  });
+
+  // Show something even while warming
+  if(list.length === 0){
+    UI.top10Body.innerHTML = `<tr><td colspan="4" class="muted">Vēl nav kandidātu...</td></tr>`;
+    return;
+  }
+
+  // Sort: scored first, then warming
+  list.sort((a,b)=>{
+    if(a.warm && !b.warm) return 1;
+    if(!a.warm && b.warm) return -1;
+    return (b.score - a.score);
+  });
+
+  const top = list.slice(0, 10);
+
+  UI.top10Body.innerHTML = top.map((x,i)=>{
+    const price = SYMBOLS.get(x.sym)?.p;
+    const priceTxt = Number.isFinite(price) ? price.toFixed(6) : "—";
+    const sTxt = x.warm ? "—" : String(x.score);
+    return `
+      <tr data-sym="${x.sym}">
+        <td class="mono">${i+1}</td>
+        <td class="mono">
+          <b>${x.sym}</b>
+          <div class="muted" style="font-size:12px;margin-top:2px;">Cena: ${priceTxt}</div>
+        </td>
+        <td class="mono"><b>${sTxt}</b></td>
+        <td>${badgeHTML(x.status)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  UI.top10Body.querySelectorAll("tr[data-sym]").forEach(tr=>{
+    tr.addEventListener("click", ()=>{
+      const sym = tr.getAttribute("data-sym");
+      if(sym) openMonitor(sym);
+    });
+  });
+}
+
+/* =======================
+   ACTIVE MONITOR
+======================= */
+const STATE = {
+  activeSymbol: "BTCUSDT",
+  tf: TF_LOCKED
+};
+
+function openMonitor(symbol){
+  let sym = normalizeSymbol(symbol);
+  if(!sym.endsWith("USDT")) sym += "USDT";
+  STATE.activeSymbol = sym;
+
+  UI.symbolInput.value = sym;
+  UI.activeSymbol.textContent = sym;
+  UI.activeTf.textContent = TF_LOCKED;
+
+  // ensure active in candidate streams
+  candidateSet.add(sym);
+  KLINE.ensureStreams(candidateSet);
+
+  // load buffer if we already have it
+  const buf = candlesBySymbol.get(sym);
+  if(buf && buf.length){
+    candlesSeries.setData(buf);
+    chart.timeScale().scrollToRealTime();
+  } else {
+    candlesSeries.setData([]);
+  }
+
+  renderActiveKPIs();
+  renderOverlaysForActive();
+}
+
+/* Manual open */
+UI.openBtn.addEventListener("click", ()=>{
+  openMonitor(UI.symbolInput.value);
+});
+
+/* =======================
+   ACTIVE KPIs + Overlays
+======================= */
+let activeTimer = null;
+function scheduleActiveRecalc(){
+  if(activeTimer) return;
+  activeTimer = setTimeout(()=>{
+    activeTimer=null;
+    renderActiveKPIs();
+    renderOverlaysForActive();
+    scheduleTop10();
+  }, 600);
+}
+
+function renderActiveKPIs(){
+  const sym = STATE.activeSymbol;
+  const r = lockedScoreV1(sym);
+
+  if(!r.ok){
+    UI.kpiVac.textContent = "—";
+    UI.kpiCmp.textContent = "—";
+    UI.kpiAgr.textContent = "—";
+    UI.kpiScore.textContent = "WARMING";
+    return;
+  }
+
+  UI.kpiVac.textContent = r.vac;
+  UI.kpiCmp.textContent = r.cmp;
+  UI.kpiAgr.textContent = `${r.agr} · ABS: ${r.absNote}`;
+  UI.kpiScore.textContent = `${r.score} (${r.status})`;
+}
+
+function renderOverlaysForActive(){
   clearOverlayLines();
+  const sym = STATE.activeSymbol;
+  const buf = candlesBySymbol.get(sym);
+  if(!buf || buf.length < 60) return;
 
   const showVac = UI.swVac.classList.contains("on");
   const showCmp = UI.swCmp.classList.contains("on");
   const showAgr = UI.swAgr.classList.contains("on");
 
-  const buf = STATE.buf;
-  if(!buf || buf.length < 10){
-    UI.kpiVac.textContent = showVac ? "—" : "OFF";
-    UI.kpiCmp.textContent = showCmp ? "—" : "OFF";
-    UI.kpiAgr.textContent = showAgr ? "—" : "OFF";
-    const st = SYMBOLS.get(STATE.symbol);
-    UI.kpiScore.textContent = st ? String(st.score) : "—";
-    return;
+  const r = lockedScoreV1(sym);
+  if(!r.ok) return;
+
+  // COMPRESS lines
+  if(showCmp && r.compress){
+    addLine(r.compress.low,  "rgba(255,180,0,0.75)", "CMP low");
+    addLine(r.compress.high, "rgba(255,180,0,0.75)", "CMP high");
+    addLine((r.compress.low+r.compress.high)/2, "rgba(255,180,0,0.25)", "COMPRESS");
   }
 
-  // SCORE from global state if exists
-  const st = SYMBOLS.get(STATE.symbol);
-  UI.kpiScore.textContent = st ? String(st.score) : "—";
-
-  // VACUUM
-  if(showVac){
-    const zones = calcVacuumAlpha(buf);
-    if(zones.length){
-      const z = zones[0];
-      addLine(z.from, "rgba(0,255,150,0.70)", "VAC start");
-      addLine(z.to,   "rgba(0,255,150,0.70)", "VAC end");
-      addLine((z.from+z.to)/2, "rgba(0,255,150,0.25)", "VACUUM");
-      UI.kpiVac.textContent = `${z.dir} (${Math.abs(z.to-z.from).toFixed(2)})`;
-    } else {
-      UI.kpiVac.textContent = "nav";
-    }
-  } else {
-    UI.kpiVac.textContent = "OFF";
+  // VACUUM zones (show first 1-2)
+  if(showVac && r.vacuumZones && r.vacuumZones.length){
+    const z = r.vacuumZones[0];
+    addLine(z.from, "rgba(0,255,150,0.70)", "VAC start");
+    addLine(z.to,   "rgba(0,255,150,0.70)", "VAC end");
+    addLine((z.from+z.to)/2, "rgba(0,255,150,0.25)", "VACUUM");
   }
 
-  // COMPRESS
-  if(showCmp){
-    const c = calcCompressAlpha(buf);
-    if(c){
-      addLine(c.bandLow,  "rgba(255,180,0,0.75)", "CMP low");
-      addLine(c.bandHigh, "rgba(255,180,0,0.75)", "CMP high");
-      addLine((c.bandLow+c.bandHigh)/2, "rgba(255,180,0,0.25)", "COMPRESS");
-      UI.kpiCmp.textContent = `${c.compressPct.toFixed(0)}%`;
-    } else {
-      UI.kpiCmp.textContent = "—";
-    }
-  } else {
-    UI.kpiCmp.textContent = "OFF";
-  }
-
-  // AGGRESSION
-  if(showAgr){
-    const lvls = calcAggressionAlpha(buf);
-    if(lvls.length){
-      lvls.forEach((a, i)=>{
-        const color = (a.side==="BUY") ? "rgba(0,255,150,0.85)" : "rgba(255,80,80,0.85)";
-        addLine(a.price, color, `${a.side} ${i+1}`);
-      });
-      const last = lvls[lvls.length-1];
-      UI.kpiAgr.textContent = `${last.side} @ ${last.price.toFixed(2)}`;
-    } else {
-      UI.kpiAgr.textContent = "nav";
-    }
-  } else {
-    UI.kpiAgr.textContent = "OFF";
+  // AGGRESSION levels (last 2)
+  if(showAgr && r.aggression && r.aggression.length){
+    const lastTwo = r.aggression.slice(-2);
+    lastTwo.forEach((a,i)=>{
+      const color = (a.side==="BUY") ? "rgba(0,255,150,0.85)" : "rgba(255,80,80,0.85)";
+      addLine(a.price, color, `${a.side}`);
+    });
   }
 }
 
@@ -811,9 +1017,14 @@ function renderOverlays(){
 setConn("Connecting...");
 connectAll();
 
-// Start monitor with BTC 15m by default
-openMonitor("BTCUSDT", "15m");
+// Start with BTC
+openMonitor("BTCUSDT");
 
+// schedule periodic Top10 render
+setInterval(scheduleTop10, 1600);
+
+// also schedule top10 after candidate changes
+setInterval(()=>{ scheduleTop10(); }, 3500);
 </script>
 </body>
 </html>
