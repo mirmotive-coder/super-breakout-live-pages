@@ -13,50 +13,11 @@
       height: 100%;
       width: 100%;
     }
-    #chart {
-      height: 100vh;
-      width: 100vw;
-    }
   </style>
 </head>
-
 <body>
-  <div id="chart"></div>
 
-  <script type="module">
-    import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
+  <h1 style="color:white">HTML OK</h1>
 
-    const chart = createChart(document.getElementById('chart'), {
-      layout: {
-        background: { color: '#0b0e11' },
-        textColor: '#cfd3dc',
-      },
-      grid: {
-        vertLines: { color: '#1e2329' },
-        horzLines: { color: '#1e2329' },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-      },
-    });
-
-    const candleSeries = chart.addCandlestickSeries();
-
-    const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_15m');
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      const k = msg.k;
-
-      candleSeries.update({
-        time: k.t / 1000,
-        open: parseFloat(k.o),
-        high: parseFloat(k.h),
-        low: parseFloat(k.l),
-        close: parseFloat(k.c),
-      });
-    };
-  </script>
 </body>
-<h1 style="color:white">HTML OK</h1></html>
+</html>
