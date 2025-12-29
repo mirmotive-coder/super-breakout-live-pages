@@ -4,73 +4,158 @@
   <meta charset="UTF-8" />
   <title>Super Breakout LIVE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #0b0e11;
-      color: #cfd3dc;
-      overflow: hidden;
+    html, body { margin:0; padding:0; background:#0b0e11; color:#cfd3dc; height:100%; width:100%; }
+    #chart { height:100vh; width:100vw; }
+    #hud {
+      position: fixed; top: 10px; left: 10px; z-index: 9999;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-size: 12px; color: #cfd3dc;
+      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);
+      padding: 8px 10px; border-radius: 10px;
+      backdrop-filter: blur(6px);
     }
-
-    #chart {
-      width: 100%;
-      height: 100%;
-    }
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+    .ok { background:#00c853; }
+    .bad { background:#ff5252; }
   </style>
 </head>
 
 <body>
+  <div id="hud"><span class="dot bad" id="wsDot"></span><span id="wsTxt">Connecting…</span></div>
   <div id="chart"></div>
 
   <script type="module">
     import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
 
-    console.log("SCRIPT STARTED");
-
-    const chart = createChart(document.getElementById('chart'), {
-      layout: {
-        background: { color: '#0b0e11' },
-        textColor: '#cfd3dc',
-      },
-      grid: {
-        vertLines: { color: '#1e2329' },
-        horzLines: { color: '#1e2329' },
-      },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-      },
+    // ===== CHART =====
+    const chartEl = document.getElementById('chart');
+    const chart = createChart(chartEl, {
+      layout: { background: { color: '#0b0e11' }, textColor: '#cfd3dc' },
+      grid: { vertLines: { color: '#1e2329' }, horzLines: { color: '#1e2329' } },
+      timeScale: { timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: '#1e2329' },
+      crosshair: { vertLine: { color:'#2b3139' }, horzLine: { color:'#2b3139' } },
     });
 
-    const candles = chart.addCandlestickSeries({
-      upColor: '#0ecb81',
-      downColor: '#f6465d',
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#00c853',
+      downColor: '#ff5252',
       borderVisible: false,
-      wickUpColor: '#0ecb81',
-      wickDownColor: '#f6465d',
+      wickUpColor: '#00c853',
+      wickDownColor: '#ff5252',
     });
 
+    // Responsive
+    const ro = new ResizeObserver(() => {
+      chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+      requestRender();
+    });
+    ro.observe(chartEl);
+
+    // ===== HUD =====
+    const wsDot = document.getElementById('wsDot');
+    const wsTxt = document.getElementById('wsTxt');
+    function setWs(ok, text) {
+      wsDot.className = 'dot ' + (ok ? 'ok' : 'bad');
+      wsTxt.textContent = text;
+    }
+
+    // ===== ZONES ENGINE (canvas overlay) =====
+    function getCanvas() {
+      // lightweight-charts creates canvas elements inside chart container
+      return chartEl.querySelector('canvas');
+    }
+
+    const zones = [];
+    function addZone(z) { zones.push(z); requestRender(); }
+
+    let raf = null;
+    function requestRender() {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = null; renderZones(); });
+    }
+
+    function renderZones() {
+      const canvas = getCanvas();
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const ps = candleSeries.priceScale();
+      const ts = chart.timeScale();
+
+      zones.forEach(z => {
+        const yHigh = ps.priceToCoordinate(z.priceHigh);
+        const yLow  = ps.priceToCoordinate(z.priceLow);
+        const xStart = ts.timeToCoordinate(z.timeStart);
+        const xEnd   = ts.timeToCoordinate(z.timeEnd);
+
+        if ([yHigh, yLow, xStart, xEnd].some(v => v === null)) return;
+
+        const top = Math.min(yHigh, yLow);
+        const h = Math.abs(yLow - yHigh);
+        const w = xEnd - xStart;
+
+        ctx.save();
+        ctx.globalAlpha = z.alpha ?? 0.20;
+        ctx.fillStyle = z.color ?? 'rgb(0,180,255)';
+        ctx.fillRect(xStart, top, w, h);
+        ctx.restore();
+      });
+    }
+
+    // Re-render zones when user pans/zooms
+    chart.timeScale().subscribeVisibleTimeRangeChange(() => requestRender());
+    chart.priceScale('right').subscribeVisibleLogicalRangeChange(() => requestRender());
+
+    // ===== DEMO ZONE (will be visible once candles exist) =====
+    // We'll set real times after first candle arrives.
+    let demoZoneArmed = false;
+
+    // ===== BINANCE WS (BTCUSDT 15m klines) =====
     const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_15m');
+
+    ws.onopen = () => setWs(true, 'WS Connected');
+    ws.onerror = () => setWs(false, 'WS Error');
+    ws.onclose = () => setWs(false, 'WS Closed');
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       const k = msg.k;
+      if (!k) return;
 
-      candles.update({
+      const candle = {
         time: k.t / 1000,
         open: parseFloat(k.o),
         high: parseFloat(k.h),
         low: parseFloat(k.l),
         close: parseFloat(k.c),
-      });
-    };
+      };
 
-    ws.onerror = (e) => {
-      console.error("WS ERROR", e);
+      candleSeries.update(candle);
+
+      // arm demo zone after first data point, based on real price range
+      if (!demoZoneArmed) {
+        demoZoneArmed = true;
+
+        const mid = candle.close;
+        const span = Math.max( (candle.high - candle.low) * 8, mid * 0.002 ); // adaptive
+        const now = candle.time;
+
+        addZone({
+          type: 'vacuum',
+          priceLow: mid - span,
+          priceHigh: mid + span,
+          timeStart: now - 6 * 3600,
+          timeEnd: now + 6 * 3600,
+          color: 'rgb(0,180,255)',
+          alpha: 0.18,
+        });
+      }
+
+      requestRender();
     };
   </script>
 </body>
