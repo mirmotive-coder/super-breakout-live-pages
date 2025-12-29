@@ -26,7 +26,6 @@
   <script type="module">
     import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
 
-    // ===== CHART =====
     const chart = createChart(document.getElementById('chart'), {
       layout: {
         background: { color: '#0b0e11' },
@@ -44,74 +43,19 @@
 
     const candleSeries = chart.addCandlestickSeries();
 
-    // ===== ZONE MANAGER =====
-    class ZoneManager {
-      constructor(chart, series) {
-        this.chart = chart;
-        this.series = series;
-        this.zones = [];
-      }
-
-      addZone(zone) {
-        this.zones.push(zone);
-      }
-
-      render() {
-        const canvas = document.querySelector('canvas');
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        const priceScale = this.series.priceScale();
-        const timeScale = this.chart.timeScale();
-
-        this.zones.forEach(z => {
-          const y1 = priceScale.priceToCoordinate(z.priceHigh);
-          const y2 = priceScale.priceToCoordinate(z.priceLow);
-          const x1 = timeScale.timeToCoordinate(z.timeStart);
-          const x2 = timeScale.timeToCoordinate(z.timeEnd);
-
-          if ([x1, x2, y1, y2].includes(null)) return;
-
-          ctx.save();
-          ctx.globalAlpha = z.alpha;
-          ctx.fillStyle = z.color;
-          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-          ctx.restore();
-        });
-      }
-    }
-
-    const zoneManager = new ZoneManager(chart, candleSeries);
-
-    // ===== TEST VACUUM ZONE =====
-    const now = Math.floor(Date.now() / 1000);
-    zoneManager.addZone({
-      type: 'vacuum',
-      priceLow: 64000,
-      priceHigh: 66000,
-      timeStart: now - 6 * 3600,
-      timeEnd: now + 6 * 3600,
-      color: 'rgb(0,180,255)',
-      alpha: 0.25,
-    });
-
-    // ===== BINANCE FUTURES WS =====
     const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_15m');
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       const k = msg.k;
 
-      const candle = {
+      candleSeries.update({
         time: k.t / 1000,
         open: parseFloat(k.o),
         high: parseFloat(k.h),
         low: parseFloat(k.l),
         close: parseFloat(k.c),
-      };
-
-      candleSeries.update(candle);
-      zoneManager.render();
+      });
     };
   </script>
 </body>
