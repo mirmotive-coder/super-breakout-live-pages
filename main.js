@@ -73,7 +73,32 @@ zoneManager.addZone({
   color: 'rgb(0,180,255)',
   alpha: 0.25,
 });
+// ===== TEST DATA (render check) =====
+const now = Math.floor(Date.now() / 1000);
 
+candleSeries.setData([
+  {
+    time: now - 900,
+    open: 65000,
+    high: 65200,
+    low: 64800,
+    close: 65100,
+  },
+  {
+    time: now - 600,
+    open: 65100,
+    high: 65350,
+    low: 65050,
+    close: 65250,
+  },
+  {
+    time: now - 300,
+    open: 65250,
+    high: 65400,
+    low: 65150,
+    close: 65380,
+  },
+]);
 // ---------- BINANCE FUTURES WS ----------
 const ws = new WebSocket(
   'wss://fstream.binance.com/ws/btcusdt@kline_15m'
