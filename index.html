@@ -1,34 +1,29 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Super Breakout LIVE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
       background: #0b0e11;
       color: #cfd3dc;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       font-family: Arial, sans-serif;
     }
-
     #status {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 10px;
+      left: 10px;
       padding: 6px 10px;
       border-radius: 6px;
-      font-size: 12px;
       background: #1e2329;
-      color: #fff;
-      z-index: 10;
+      font-size: 13px;
     }
-
     #chart {
       width: 100vw;
       height: 100vh;
@@ -45,7 +40,6 @@
 
     const statusEl = document.getElementById('status');
 
-    // ===== CHART =====
     const chart = createChart(document.getElementById('chart'), {
       layout: {
         background: { color: '#0b0e11' },
@@ -61,90 +55,34 @@
       },
     });
 
-    const candleSeries = chart.addCandlestickSeries();
+    const candles = chart.addCandlestickSeries();
 
-    // ===== ZONE MANAGER =====
-    class ZoneManager {
-      constructor(chart, series) {
-        this.chart = chart;
-        this.series = series;
-        this.zones = [];
-      }
-
-      addZone(zone) {
-        this.zones.push(zone);
-      }
-
-      render() {
-        const canvas = document.querySelector('canvas');
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        const priceScale = this.series.priceScale();
-        const timeScale = this.chart.timeScale();
-
-        this.zones.forEach(z => {
-          const y1 = priceScale.priceToCoordinate(z.priceHigh);
-          const y2 = priceScale.priceToCoordinate(z.priceLow);
-          const x1 = timeScale.timeToCoordinate(z.timeStart);
-          const x2 = timeScale.timeToCoordinate(z.timeEnd);
-
-          if ([x1, x2, y1, y2].includes(null)) return;
-
-          ctx.save();
-          ctx.globalAlpha = z.alpha;
-          ctx.fillStyle = z.color;
-          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-          ctx.restore();
-        });
-      }
-    }
-
-    const zoneManager = new ZoneManager(chart, candleSeries);
-
-    // ===== TEST ZONE =====
-    const now = Math.floor(Date.now() / 1000);
-    zoneManager.addZone({
-      priceLow: 64000,
-      priceHigh: 66000,
-      timeStart: now - 6 * 3600,
-      timeEnd: now + 6 * 3600,
-      color: 'rgb(0,180,255)',
-      alpha: 0.25,
-    });
-
-    // ===== BINANCE WS (STABLE ENDPOINT) =====
-    const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_15m');
+    const ws = new WebSocket(
+      'wss://fstream.binance.com/ws/btcusdt@kline_1m'
+    );
 
     ws.onopen = () => {
       statusEl.textContent = 'Connected';
-      statusEl.style.color = '#0ecb81';
+      statusEl.style.background = '#0f5132';
     };
 
     ws.onerror = () => {
       statusEl.textContent = 'WebSocket error';
-      statusEl.style.color = '#f6465d';
+      statusEl.style.background = '#842029';
     };
 
-    ws.onclose = () => {
-      statusEl.textContent = 'Disconnected';
-      statusEl.style.color = '#f6465d';
-    };
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (!msg.k) return;
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
       const k = msg.k;
-
-      const candle = {
+      candles.update({
         time: k.t / 1000,
-        open: parseFloat(k.o),
-        high: parseFloat(k.h),
-        low: parseFloat(k.l),
-        close: parseFloat(k.c),
-      };
-
-      candleSeries.update(candle);
-      zoneManager.render();
+        open: +k.o,
+        high: +k.h,
+        low: +k.l,
+        close: +k.c,
+      });
     };
   </script>
 </body>
