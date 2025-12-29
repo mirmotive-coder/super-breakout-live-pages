@@ -1,4 +1,4 @@
-// stateEngine/index.js
+console.log('[STATE ENGINE] index.js loaded');// stateEngine/index.js
 // Super Breakout – State Engine Entry Point
 // Atbild par state aprēķinu un rezultāta atgriešanu
 
