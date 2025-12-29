@@ -1,21 +1,26 @@
 // stateEngine/index.js
-// Super Breakout – State Engine Orchestrator
+// Super Breakout – State Engine Entry Point
+// Atbild par state aprēķinu un rezultāta atgriešanu
 
-import { createStateMachine } from './stateMachine.js';
-import { resolveNextState } from './stateTransitions.js';
-import { buildMarketMetrics } from './metricsAdapter.js';
+import { evaluateState } from './stateMachine.js';
+import { adaptMetrics } from './metricsAdapter.js';
 
-export function runStateEngine({ candles, zones, prevState }) {
-  const metrics = buildMarketMetrics({ candles, zones });
-  if (!metrics) return prevState || null;
+export function runStateEngine(rawMarketData) {
+  if (!rawMarketData) {
+    console.warn('[STATE ENGINE] No market data provided');
+    return null;
+  }
 
-  const machine = createStateMachine(prevState);
-  const nextState = resolveNextState(machine.current, metrics);
+  // 1. Pielāgojam datus engine vajadzībām
+  const metrics = adaptMetrics(rawMarketData);
 
-  machine.transition(nextState);
+  // 2. Aprēķinam tirgus stāvokli
+  const stateResult = evaluateState(metrics);
 
-  return {
-    state: machine.current,
-    metrics,
-  };
+  // 3. Debug / izglītojošs logs
+  console.log('[STATE ENGINE] Current state:', stateResult.state);
+  console.log('[STATE ENGINE] Confidence:', stateResult.confidence);
+  console.log('[STATE ENGINE] Details:', stateResult.details);
+
+  return stateResult;
 }
