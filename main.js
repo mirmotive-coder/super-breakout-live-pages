@@ -21,7 +21,11 @@ const chart = createChart(document.body, {
 });
 
 const candleSeries = chart.addCandlestickSeries();
-
+candleSeries.setData([
+  { time: 1717000000, open: 68000, high: 68500, low: 67500, close: 68200 },
+  { time: 1717000900, open: 68200, high: 69000, low: 68100, close: 68800 },
+  { time: 1717001800, open: 68800, high: 69200, low: 68400, close: 68600 }
+]);
 // ---------- ZONE MANAGER ----------
 class ZoneManager {
   constructor(chart, series) {
