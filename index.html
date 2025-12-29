@@ -1,787 +1,118 @@
-<!DOCTYPE html>
-<html lang="lv">
+    let searchTimer <!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Super Breakout LIVE — Screener (v1)</title>
-
+  <title>Super Breakout LIVE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root{
-      --bg:#0b0e11;
-      --panel:#0f1419;
-      --line:#1e2329;
-      --text:#cfd3dc;
-      --muted:#8b93a1;
-      --green:#00c087;
-      --red:#f6465d;
-      --yellow:#f0b90b;
-      --cyan:#00d5ff;
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0b0e11;
+      color: #cfd3dc;
+      height: 100%;
+      width: 100%;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family: Arial, sans-serif;
-    }
-
-    /* LAYOUT */
-    #app{
-      display:flex;
-      flex-direction:column;
-      min-height:100vh;
-    }
-    #topbar{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:space-between;
-      padding:10px 12px;
-      border-bottom:1px solid var(--line);
-      background:linear-gradient(180deg, #0b0e11, #0b0e11);
-      position:sticky;
-      top:0;
-      z-index:50;
-    }
-    #brand{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-    #brand b{letter-spacing:0.5px}
-    #sub{
-      font-size:12px;
-      color:var(--muted);
-    }
-
-    #statusRow{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-size:12px;
-      color:var(--muted);
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:6px 8px;
-      border:1px solid var(--line);
-      background:#0c1116;
-      border-radius:999px;
-      white-space:nowrap;
-    }
-    .dot{
-      width:10px; height:10px; border-radius:50%;
-      background:var(--red);
-      box-shadow:0 0 10px rgba(246,70,93,0.35);
-    }
-    .dot.green{background:var(--green); box-shadow:0 0 10px rgba(0,192,135,0.35)}
-    .dot.yellow{background:var(--yellow); box-shadow:0 0 10px rgba(240,185,11,0.35)}
-    .btn{
-      border:1px solid var(--line);
-      background:#0c1116;
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:10px;
-      font-size:12px;
-      cursor:pointer;
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      border-color:rgba(0,192,135,0.35);
-      box-shadow:0 0 0 1px rgba(0,192,135,0.12) inset;
-    }
-    .select{
-      border:1px solid var(--line);
-      background:#0c1116;
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:10px;
-      font-size:12px;
-    }
-    .input{
-      border:1px solid var(--line);
-      background:#0c1116;
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:10px;
-      font-size:12px;
-      width:160px;
-    }
-
-    #main{
-      display:flex;
-      flex-direction:column;
-      flex:1;
-      min-height:0;
-    }
-
-    #chartWrap{
-      position:relative;
-      border-bottom:1px solid var(--line);
-      background:#0b0e11;
-      min-height:56vh;
-    }
-    #chartHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-bottom:1px solid var(--line);
-      background:#0b0e11;
-    }
-    #chartTitle{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-    #chartTitle b{letter-spacing:0.5px}
-    #chartTitle span{font-size:12px;color:var(--muted)}
-    #chart{
-      width:100%;
-      height:calc(56vh - 54px);
-      min-height:320px;
-    }
-
-    #panels{
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-      flex:1;
-      background:var(--panel);
-    }
-
-    #panelsHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-bottom:1px solid var(--line);
-      background:var(--panel);
-      position:sticky;
-      top:54px; /* zem topbar */
-      z-index:20;
-    }
-
-    #lists{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:10px;
-      padding:10px 12px 14px;
-      overflow:auto;
-      min-height:0;
-    }
-
-    .card{
-      border:1px solid var(--line);
-      border-radius:14px;
-      background:#0c1116;
-      overflow:hidden;
-    }
-    .card h3{
-      margin:0;
-      padding:10px 12px;
-      font-size:13px;
-      border-bottom:1px solid var(--line);
-      color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .card h3 span{color:var(--muted); font-weight:normal; font-size:12px}
-
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:12px;
-    }
-    th, td{
-      padding:8px 10px;
-      border-bottom:1px solid rgba(30,35,41,0.7);
-      text-align:left;
-      vertical-align:middle;
-    }
-    th{
-      position:sticky;
-      top:0;
-      background:#0c1116;
-      z-index:5;
-      color:var(--muted);
-      font-weight:600;
-    }
-    tr:hover td{background:rgba(255,255,255,0.02)}
-    .sym{
-      font-weight:700;
-      letter-spacing:0.4px;
-      cursor:pointer;
-    }
-    .num{font-variant-numeric: tabular-nums}
-    .tag{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:2px 6px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      font-size:11px;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-    .up{color:var(--green)}
-    .dn{color:var(--red)}
-
-    /* Desktop layout: chart left, panels right */
-    @media (min-width: 980px){
-      #main{
-        flex-direction:row;
-      }
-      #chartWrap{
-        flex: 3;
-        border-bottom:none;
-        border-right:1px solid var(--line);
-        min-height:calc(100vh - 54px);
-      }
-      #chart{
-        height:calc(100vh - 54px - 54px);
-      }
-      #panels{
-        flex: 2;
-        min-height:calc(100vh - 54px);
-      }
-      #panelsHeader{
-        top:54px;
-      }
-      #lists{
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .hint{
-      color:var(--muted);
-      font-size:12px;
-      padding:10px 12px;
-      border-top:1px solid var(--line);
-      background:#0c1116;
+    #chart {
+      height: 100vh;
+      width: 100vw;
     }
   </style>
 </head>
 
 <body>
-  <div id="app">
+  <div id="chart"></div>
 
-    <div id="topbar">
-      <div id="brand">
-        <b>Super Breakout LIVE</b>
-        <div id="sub">Screener v1 (LIVE WebSocket) — Top-10 + grafiks</div>
-      </div>
+  <script type="module">
+    import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
 
-      <div id="statusRow">
-        <div class="pill">
-          <div id="wsDot" class="dot"></div>
-          <span id="wsText">Savienojums: Atvienots</span>
-        </div>
-        <div class="pill">
-          <span>Latence:</span>
-          <b id="latText" class="num">—</b>
-        </div>
-        <div class="pill">
-          <span>Atjaunināts:</span>
-          <b id="updText" class="num">—</b>
-        </div>
-        <button class="btn" id="btnReconnect">Reconnect</button>
-      </div>
-    </div>
+    // ===== CHART =====
+    const chart = createChart(document.getElementById('chart'), {
+      layout: {
+        background: { color: '#0b0e11' },
+        textColor: '#cfd3dc',
+      },
+      grid: {
+        vertLines: { color: '#1e2329' },
+        horzLines: { color: '#1e2329' },
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
 
-    <div id="main">
-      <!-- CHART -->
-      <div id="chartWrap">
-        <div id="chartHeader">
-          <div id="chartTitle">
-            <b id="selSymbol">BTCUSDT</b>
-            <span>Grafiks: TradingView (BINANCE Futures view)</span>
-          </div>
+    const candleSeries = chart.addCandlestickSeries();
 
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-            <select id="tfSelect" class="select">
-              <option value="1">1m</option>
-              <option value="3">3m</option>
-              <option value="5">5m</option>
-              <option value="15" selected>15m</option>
-              <option value="60">1h</option>
-              <option value="240">4h</option>
-            </select>
-            <button class="btn primary" id="btnFocusTop">Focus: Top-10</button>
-          </div>
-        </div>
-
-        <div id="chart"></div>
-      </div>
-
-      <!-- PANELS -->
-      <div id="panels">
-        <div id="panelsHeader">
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <input id="search" class="input" placeholder="Meklēt (piem. ICP)" />
-            <select id="sortSelect" class="select">
-              <option value="score" selected>Sort: Score</option>
-              <option value="compress">Sort: Compress</option>
-              <option value="aggr">Sort: Aggression</option>
-              <option value="vac">Sort: Vacuum</option>
-              <option value="chg">Sort: Δ%</option>
-            </select>
-          </div>
-
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
-            <span class="tag">LIVE only</span>
-            <span class="tag">No autotrade</span>
-            <span class="tag">15m default</span>
-          </div>
-        </div>
-
-        <div id="lists">
-          <div class="card">
-            <h3>
-              <span><b>TOP-10</b> (pēc Score)</span>
-              <span id="topMeta">—</span>
-            </h3>
-            <div style="max-height: 42vh; overflow:auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Simbols</th>
-                    <th class="num">Cena</th>
-                    <th class="num">Δ%</th>
-                    <th class="num">Compress</th>
-                    <th class="num">Aggr</th>
-                    <th class="num">Vac</th>
-                    <th class="num">Score</th>
-                  </tr>
-                </thead>
-                <tbody id="topBody"></tbody>
-              </table>
-            </div>
-            <div class="hint">
-              Piezīme: Vac/Compress/Aggr šajā v1 ir “ātrie heuristiskie” rādītāji no markPrice plūsmas. Nākamajā solī tos sasaistīsim ar kline (sveces) datiem, lai zonas precīzi līp pie grafika.
-            </div>
-          </div>
-
-          <div class="card">
-            <h3>
-              <span><b>Visi simboli</b> (filtrs + sort)</span>
-              <span id="allMeta">—</span>
-            </h3>
-            <div style="max-height: 46vh; overflow:auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Simbols</th>
-                    <th class="num">Cena</th>
-                    <th class="num">Δ%</th>
-                    <th class="num">Compress</th>
-                    <th class="num">Aggr</th>
-                    <th class="num">Vac</th>
-                    <th class="num">Score</th>
-                  </tr>
-                </thead>
-                <tbody id="allBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- TradingView -->
-  <script src="https://s3.tradingview.com/tv.js"></script>
-
-  <script>
-    /**********************
-     * CONFIG
-     **********************/
-    const WS_URL = "wss://fstream.binance.com/ws/!markPrice@arr";
-    const HISTORY_N = 24;         // īsa vēsture (markPrice update ritms parasti ~1s)
-    const UI_REFRESH_MS = 600;    // UI atjauninājums throttled
-    const LIST_LIMIT = 120;       // lai neuzspridzinātu telefonu (var palielināt vēlāk)
-
-    // Score svari (v1) — lai ātri strādā:
-    // Compress (meklē saspiestu) + Vacuum (gap-like) + Aggression (impulss)
-    const W_COMPRESS = 0.42;
-    const W_VACUUM   = 0.33;
-    const W_AGGR     = 0.25;
-
-    /**********************
-     * STATE
-     **********************/
-    let ws = null;
-    let wsStatus = "DISCONNECTED"; // CONNECTED | DEGRADED | DISCONNECTED
-    let lastEventTime = 0;
-    let lastUIUpdate = 0;
-    let lastMsgAt = 0;
-
-    // symbol -> { prices: [ {t, p} ], lastP, firstP, chgPct, metrics }
-    const symMap = new Map();
-
-    // Selected
-    let selectedSymbol = "BTCUSDT";
-    let selectedTf = "15";
-    let tvWidget = null;
-
-    /**********************
-     * DOM
-     **********************/
-    const wsDot = document.getElementById("wsDot");
-    const wsText = document.getElementById("wsText");
-    const latText = document.getElementById("latText");
-    const updText = document.getElementById("updText");
-    const btnReconnect = document.getElementById("btnReconnect");
-
-    const selSymbolEl = document.getElementById("selSymbol");
-    const tfSelect = document.getElementById("tfSelect");
-    const btnFocusTop = document.getElementById("btnFocusTop");
-
-    const searchEl = document.getElementById("search");
-    const sortSelect = document.getElementById("sortSelect");
-
-    const topBody = document.getElementById("topBody");
-    const allBody = document.getElementById("allBody");
-    const topMeta = document.getElementById("topMeta");
-    const allMeta = document.getElementById("allMeta");
-
-    /**********************
-     * UTIL
-     **********************/
-    function setWSUI(state){
-      wsStatus = state;
-      wsDot.className = "dot" + (state==="CONNECTED" ? " green" : state==="DEGRADED" ? " yellow" : "");
-      wsText.textContent = "Savienojums: " + (state==="CONNECTED" ? "Savienots" : state==="DEGRADED" ? "Pasliktināts" : "Atvienots");
-    }
-    function fmtNum(x, d=2){
-      if(!isFinite(x)) return "—";
-      return Number(x).toFixed(d);
-    }
-    function fmtPrice(x){
-      if(!isFinite(x)) return "—";
-      const ax = Math.abs(x);
-      if(ax >= 1000) return x.toFixed(1);
-      if(ax >= 100) return x.toFixed(2);
-      if(ax >= 1) return x.toFixed(4);
-      return x.toFixed(6);
-    }
-    function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-
-    /**********************
-     * METRICS (v1 fast heuristics)
-     **********************/
-    function computeMetrics(prices){
-      // prices: array of {t, p} length >= 6 ideally
-      const n = prices.length;
-      if(n < 6) return { compress:0, aggr:0, vac:0, score:0, chgPct:0 };
-
-      const first = prices[0].p;
-      const last  = prices[n-1].p;
-      const chgPct = (last - first) / (first || 1) * 100;
-
-      // Rolling returns
-      let rets = [];
-      for(let i=1;i<n;i++){
-        const p0 = prices[i-1].p, p1 = prices[i].p;
-        if(p0>0 && isFinite(p1)) rets.push((p1 - p0) / p0);
+    // ===== ZONE MANAGER =====
+    class ZoneManager {
+      constructor(chart, series) {
+        this.chart = chart;
+        this.series = series;
+        this.zones = [];
       }
-      if(rets.length < 4) return { compress:0, aggr:0, vac:0, score:0, chgPct };
 
-      // Volatility proxy = std of returns
-      const mean = rets.reduce((a,b)=>a+b,0)/rets.length;
-      const varr = rets.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(rets.length||1);
-      const vol = Math.sqrt(varr); // ~0..?
-      // Range proxy
-      let minP=Infinity, maxP=-Infinity;
-      for(const x of prices){ if(x.p<minP)minP=x.p; if(x.p>maxP)maxP=x.p; }
-      const range = (maxP-minP)/(last||1);
-
-      // Compress: low vol + low range -> high compress
-      // Normalize with soft caps
-      const volN = clamp01(1 - (vol / 0.0035));     // 0.35% vol ~ 0
-      const rngN = clamp01(1 - (range / 0.008));    // 0.8% range ~ 0
-      const compress = clamp01(0.55*volN + 0.45*rngN);
-
-      // Aggression: recent absolute return speed (last 3)
-      const k = Math.min(3, rets.length);
-      const recent = rets.slice(-k);
-      const aggrRaw = recent.reduce((a,b)=>a+Math.abs(b),0)/k;
-      const aggr = clamp01(aggrRaw / 0.004); // 0.4%/tick -> 1
-
-      // Vacuum (gap-like heuristic):
-      // If we had low movement for many ticks then a sudden jump -> vacuum potential
-      const flatWindow = rets.slice(0, Math.max(0, rets.length-3));
-      const flatAvg = flatWindow.length ? flatWindow.reduce((a,b)=>a+Math.abs(b),0)/flatWindow.length : 0;
-      const jumpAvg = recent.reduce((a,b)=>a+Math.abs(b),0)/k;
-      const vac = clamp01( (compress*0.6 + clamp01( (jumpAvg - flatAvg) / 0.004 )*0.4) );
-
-      const score = clamp01(W_COMPRESS*compress + W_VACUUM*vac + W_AGGR*aggr);
-
-      return { compress, aggr, vac, score, chgPct };
-    }
-
-    /**********************
-     * TRADINGVIEW
-     **********************/
-    function buildTV(symbol, interval){
-      selSymbolEl.textContent = symbol;
-      // Clear container
-      const el = document.getElementById("chart");
-      el.innerHTML = "";
-
-      // TradingView uses format like BINANCE:BTCUSDT (spot)
-      // For quick view it is OK. Next step: switch to BINANCE futures feed alternatives if needed.
-      tvWidget = new TradingView.widget({
-        container_id: "chart",
-        autosize: true,
-        symbol: "BINANCE:" + symbol,
-        interval: interval,
-        timezone: "Etc/UTC",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        hide_top_toolbar: false,
-        hide_legend: true,
-        allow_symbol_change: false,
-        save_image: false
-      });
-    }
-
-    /**********************
-     * WEBSOCKET
-     **********************/
-    function connect(){
-      try{ if(ws) ws.close(); }catch(e){}
-      setWSUI("DISCONNECTED");
-
-      ws = new WebSocket(WS_URL);
-
-      ws.onopen = () => {
-        setWSUI("CONNECTED");
-        lastMsgAt = Date.now();
-      };
-
-      ws.onmessage = (ev) => {
-        lastMsgAt = Date.now();
-
-        // Data is array of markPrice objects
-        let arr;
-        try{ arr = JSON.parse(ev.data); }catch(e){ return; }
-        if(!Array.isArray(arr)) return;
-
-        // Compute latency from event time (E) if available in the first element
-        const now = Date.now();
-        let E = 0;
-        if(arr[0] && typeof arr[0].E === "number") E = arr[0].E;
-        lastEventTime = E || lastEventTime;
-        if(E){
-          const lat = Math.max(0, now - E);
-          latText.textContent = lat + " ms";
-          if(lat <= 1200) setWSUI("CONNECTED");
-          else if(lat <= 3000) setWSUI("DEGRADED");
-          else setWSUI("DISCONNECTED");
-        }
-
-        // Update map
-        for(const item of arr){
-          const s = item.s;
-          const p = Number(item.p); // markPrice
-          const t = item.E ? Number(item.E) : now;
-          if(!s || !isFinite(p)) continue;
-          // keep only USDT-m symbols
-          if(!s.endsWith("USDT")) continue;
-
-          let rec = symMap.get(s);
-          if(!rec){
-            rec = { prices: [], lastP: p, metrics: null };
-            symMap.set(s, rec);
-          }
-          rec.lastP = p;
-          rec.prices.push({ t, p });
-          if(rec.prices.length > HISTORY_N) rec.prices.shift();
-        }
-
-        // Throttled UI refresh
-        if(now - lastUIUpdate >= UI_REFRESH_MS){
-          lastUIUpdate = now;
-          updText.textContent = new Date(now).toLocaleTimeString();
-          render();
-        }
-      };
-
-      ws.onclose = () => {
-        setWSUI("DISCONNECTED");
-      };
-
-      ws.onerror = () => {
-        setWSUI("DISCONNECTED");
-      };
-    }
-
-    // Background health check for “stale”
-    setInterval(() => {
-      const now = Date.now();
-      const dt = now - lastMsgAt;
-      if(dt > 3000 && wsStatus === "CONNECTED"){
-        setWSUI("DEGRADED");
+      addZone(zone) {
+        this.zones.push(zone);
       }
-      if(dt > 8000){
-        setWSUI("DISCONNECTED");
-      }
-    }, 800);
 
-    /**********************
-     * RENDER
-     **********************/
-    function buildRows(rows, tbody){
-      const frag = document.createDocumentFragment();
-      for(const r of rows){
-        const tr = document.createElement("tr");
+      render() {
+        const canvas = document.querySelector('canvas');
+        if (!canvas) return;
 
-        const tdS = document.createElement("td");
-        tdS.innerHTML = `<span class="sym">${r.sym}</span> <span class="tag">${r.state}</span>`;
-        tdS.querySelector(".sym").addEventListener("click", () => {
-          selectedSymbol = r.sym;
-          buildTV(selectedSymbol, selectedTf);
-        });
+        const ctx = canvas.getContext('2d');
+        const priceScale = this.series.priceScale();
+        const timeScale = this.chart.timeScale();
 
-        const tdP = document.createElement("td");
-        tdP.className = "num";
-        tdP.textContent = fmtPrice(r.price);
+        this.zones.forEach(z => {
+          const y1 = priceScale.priceToCoordinate(z.priceHigh);
+          const y2 = priceScale.priceToCoordinate(z.priceLow);
+          const x1 = timeScale.timeToCoordinate(z.timeStart);
+          const x2 = timeScale.timeToCoordinate(z.timeEnd);
 
-        const tdC = document.createElement("td");
-        tdC.className = "num " + (r.chgPct>=0 ? "up":"dn");
-        tdC.textContent = fmtNum(r.chgPct,2);
+          if ([x1, x2, y1, y2].includes(null)) return;
 
-        const tdComp = document.createElement("td");
-        tdComp.className = "num";
-        tdComp.textContent = fmtNum(r.compress*100,0);
-
-        const tdAg = document.createElement("td");
-        tdAg.className = "num";
-        tdAg.textContent = fmtNum(r.aggr*100,0);
-
-        const tdVac = document.createElement("td");
-        tdVac.className = "num";
-        tdVac.textContent = fmtNum(r.vac*100,0);
-
-        const tdScore = document.createElement("td");
-        tdScore.className = "num";
-        tdScore.textContent = fmtNum(r.score*100,0);
-
-        tr.appendChild(tdS);
-        tr.appendChild(tdP);
-        tr.appendChild(tdC);
-        tr.appendChild(tdComp);
-        tr.appendChild(tdAg);
-        tr.appendChild(tdVac);
-        tr.appendChild(tdScore);
-
-        frag.appendChild(tr);
-      }
-      tbody.innerHTML = "";
-      tbody.appendChild(frag);
-    }
-
-    function classifyState(m){
-      // Vienkārša, bet noderīga klasifikācija v1:
-      if(m.compress > 0.72 && m.aggr < 0.30) return "COMPRESS";
-      if(m.aggr > 0.75 && m.compress < 0.55) return "AGGR";
-      if(m.vac > 0.72 && m.aggr > 0.45) return "VAC";
-      return "MIX";
-    }
-
-    function render(){
-      // Build scored list
-      const rows = [];
-      for(const [sym, rec] of symMap.entries()){
-        if(rec.prices.length < 6) continue;
-        const m = computeMetrics(rec.prices);
-        const state = classifyState(m);
-        rows.push({
-          sym,
-          price: rec.lastP,
-          chgPct: m.chgPct,
-          compress: m.compress,
-          aggr: m.aggr,
-          vac: m.vac,
-          score: m.score,
-          state
+          ctx.save();
+          ctx.globalAlpha = z.alpha;
+          ctx.fillStyle = z.color;
+          ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+          ctx.restore();
         });
       }
-
-      // Filter search
-      const q = (searchEl.value || "").trim().toUpperCase();
-      let filtered = rows;
-      if(q){
-        filtered = rows.filter(r => r.sym.includes(q));
-      }
-
-      // Sort
-      const sortBy = sortSelect.value;
-      const cmp = (a,b) => {
-        if(sortBy==="compress") return b.compress - a.compress;
-        if(sortBy==="aggr") return b.aggr - a.aggr;
-        if(sortBy==="vac") return b.vac - a.vac;
-        if(sortBy==="chg") return b.chgPct - a.chgPct;
-        return b.score - a.score; // default
-      };
-      filtered.sort(cmp);
-
-      // Top 10 (from ALL, not only filtered)
-      const top = [...rows].sort((a,b)=>b.score-a.score).slice(0,10);
-      topMeta.textContent = `Simboli: ${top.length} | Avots: Binance WS`;
-      buildRows(top, topBody);
-
-      // All list limited
-      const limited = filtered.slice(0, LIST_LIMIT);
-      allMeta.textContent = `Rādām: ${limited.length} / ${filtered.length} (no ${rows.length})`;
-      buildRows(limited, allBody);
     }
 
-    /**********************
-     * EVENTS
-     **********************/
-    btnReconnect.addEventListener("click", () => connect());
+    const zoneManager = new ZoneManager(chart, candleSeries);
 
-    tfSelect.addEventListener("change", () => {
-      selectedTf = tfSelect.value;
-      buildTV(selectedSymbol, selectedTf);
+    // ===== TEST VACUUM ZONE =====
+    const now = Math.floor(Date.now() / 1000);
+    zoneManager.addZone({
+      type: 'vacuum',
+      priceLow: 64000,
+      priceHigh: 66000,
+      timeStart: now - 6 * 3600,
+      timeEnd: now + 6 * 3600,
+      color: 'rgb(0,180,255)',
+      alpha: 0.25,
     });
 
-    btnFocusTop.addEventListener("click", () => {
-      // pick top1 and open chart
-      const firstRow = topBody.querySelector(".sym");
-      if(firstRow){
-        firstRow.click();
-      }
-    });
+    // ===== BINANCE FUTURES WS =====
+    const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_15m');
 
-    // Debounce search for mobile
-    let searchTimer = null;
-    searchEl.addEventListener("input", () => {
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(()=>render(), 180);
-    });
-    sortSelect.addEventListener("change", () => render());
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      const k = msg.k;
 
-    /**********************
-     * INIT
-     **********************/
-    selectedTf = tfSelect.value;
-    buildTV(selectedSymbol, selectedTf);
-    connect();
+      const candle = {
+        time: k.t / 1000,
+        open: parseFloat(k.o),
+        high: parseFloat(k.h),
+        low: parseFloat(k.l),
+        close: parseFloat(k.c),
+      };
+
+      candleSeries.update(candle);
+      zoneManager.render();
+    };
   </script>
 </body>
 </html>
