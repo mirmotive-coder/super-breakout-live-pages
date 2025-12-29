@@ -1,97 +1,118 @@
 // stateEngine.js
 // Super Breakout – Core Market State Engine
 // Ideoloģija: COMPRESS → VACUUM → ABSORPTION → RANGE / BREAK
+// ŠIS IR KODOLS. Bez vizualizācijas. Bez UI. Tikai loģika.
 
-// ===== STATES =====
-export const STATES = Object.freeze({
-  COMPRESS: 'COMPRESS',
-  VACUUM_UP: 'VACUUM_UP',
-  VACUUM_DOWN: 'VACUUM_DOWN',
-  ABSORPTION: 'ABSORPTION',
-  RANGE: 'RANGE',
-});
+export const MARKET_STATES = {
+  COMPRESS: "COMPRESS",
+  VACUUM: "VACUUM",
+  ABSORPTION: "ABSORPTION",
+  RANGE: "RANGE",
+  BREAK: "BREAK"
+};
 
-// ===== EVENTS =====
-export const EVENTS = Object.freeze({
-  COMPRESS_DETECTED: 'COMPRESS_DETECTED',
-  BREAK_UP: 'BREAK_UP',
-  BREAK_DOWN: 'BREAK_DOWN',
-  ABSORPTION_DETECTED: 'ABSORPTION_DETECTED',
-  VACUUM_FILLED: 'VACUUM_FILLED',
-  RANGE_REENTRY: 'RANGE_REENTRY',
-});
+// ===== CONFIG =====
+const CONFIG = {
+  compressRangePct: 0.6,      // % no vidējā range, lai uzskatītu par compress
+  vacuumImpulsePct: 1.2,      // % kustība, lai uzskatītu par vakuuma impulsu
+  absorptionBars: 3,          // cik sveces absorbcijai
+  minVolumeSpike: 1.5          // apjoma pieauguma koeficients
+};
 
-// ===== STATE ENGINE =====
-export class StateEngine {
+// ===== CORE ENGINE =====
+export class MarketStateEngine {
   constructor() {
-    this.state = STATES.RANGE;
-    this.lastEvent = null;
-    this.lastTransitionAt = Date.now();
+    this.state = MARKET_STATES.RANGE;
+    this.history = [];
+    this.lastImpulse = null;
+  }
+
+  update(candle, context) {
+    /**
+     * candle: { open, high, low, close, volume }
+     * context: {
+     *   avgRange,
+     *   avgVolume,
+     *   prevHigh,
+     *   prevLow
+     * }
+     */
+
+    const range = candle.high - candle.low;
+    const rangePct = (range / context.avgRange) * 100;
+    const volumeSpike = candle.volume / context.avgVolume;
+
+    // ===== COMPRESS =====
+    if (rangePct < CONFIG.compressRangePct * 100) {
+      this.state = MARKET_STATES.COMPRESS;
+      this._push("compress", candle);
+      return this.state;
+    }
+
+    // ===== VACUUM =====
+    if (
+      this.state === MARKET_STATES.COMPRESS &&
+      rangePct > CONFIG.vacuumImpulsePct * 100 &&
+      volumeSpike < CONFIG.minVolumeSpike
+    ) {
+      this.state = MARKET_STATES.VACUUM;
+      this.lastImpulse = {
+        direction: candle.close > candle.open ? "UP" : "DOWN",
+        startPrice: candle.open,
+        endPrice: candle.close
+      };
+      this._push("vacuum", candle);
+      return this.state;
+    }
+
+    // ===== ABSORPTION =====
+    if (
+      this.state === MARKET_STATES.VACUUM &&
+      volumeSpike >= CONFIG.minVolumeSpike
+    ) {
+      this.state = MARKET_STATES.ABSORPTION;
+      this._push("absorption", candle);
+      return this.state;
+    }
+
+    // ===== BREAK or RANGE =====
+    if (this.state === MARKET_STATES.ABSORPTION) {
+      const breakoutUp = candle.close > context.prevHigh;
+      const breakoutDown = candle.close < context.prevLow;
+
+      if (breakoutUp || breakoutDown) {
+        this.state = MARKET_STATES.BREAK;
+        this._push("break", candle);
+        return this.state;
+      } else {
+        this.state = MARKET_STATES.RANGE;
+        this._push("range", candle);
+        return this.state;
+      }
+    }
+
+    // ===== DEFAULT =====
+    this.state = MARKET_STATES.RANGE;
+    return this.state;
+  }
+
+  _push(type, candle) {
+    this.history.push({
+      type,
+      candle,
+      ts: Date.now()
+    });
+
+    if (this.history.length > 100) {
+      this.history.shift();
+    }
   }
 
   getState() {
     return this.state;
   }
 
-  getLastEvent() {
-    return this.lastEvent;
-  }
-
-  // Galvenais likums:
-  // State MAINĀS TIKAI, ja ir VALID EVENT
-  dispatch(event) {
-    const prevState = this.state;
-
-    switch (this.state) {
-      case STATES.RANGE:
-        if (event === EVENTS.COMPRESS_DETECTED) {
-          this._transition(STATES.COMPRESS, event);
-        }
-        break;
-
-      case STATES.COMPRESS:
-        if (event === EVENTS.BREAK_UP) {
-          this._transition(STATES.VACUUM_UP, event);
-        } else if (event === EVENTS.BREAK_DOWN) {
-          this._transition(STATES.VACUUM_DOWN, event);
-        }
-        break;
-
-      case STATES.VACUUM_UP:
-      case STATES.VACUUM_DOWN:
-        if (event === EVENTS.ABSORPTION_DETECTED) {
-          this._transition(STATES.ABSORPTION, event);
-        }
-        break;
-
-      case STATES.ABSORPTION:
-        if (event === EVENTS.VACUUM_FILLED) {
-          this._transition(STATES.RANGE, event);
-        }
-        break;
-
-      default:
-        break;
-    }
-
-    return {
-      from: prevState,
-      to: this.state,
-      event: this.lastEvent,
-    };
-  }
-
-  _transition(nextState, event) {
-    this.state = nextState;
-    this.lastEvent = event;
-    this.lastTransitionAt = Date.now();
-
-    // Šeit vēlāk var pieslēgt:
-    // - logger
-    // - UI notifier
-    // - metrics
+  getHistory() {
+    return this.history;
   }
 }
-
-// ===== SINGLETON (viena patiesība visai app) =====
-export const stateEngine = new StateEngine();
