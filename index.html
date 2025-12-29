@@ -16,8 +16,23 @@
   </style>
 </head>
 <body>
+<div id="chart" style="width:100vw;height:100vh;"></div>
 
-  <h1 style="color:white">HTML OK</h1>
+<script type="module">
+  import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
 
+  const chart = createChart(document.getElementById('chart'), {
+    layout: {
+      background: { color: '#0b0e11' },
+      textColor: '#cfd3dc',
+    },
+    grid: {
+      vertLines: { color: '#1e2329' },
+      horzLines: { color: '#1e2329' },
+    },
+  });
+
+  chart.addCandlestickSeries();
+</script>
 </body>
 </html>
