@@ -4,41 +4,74 @@
   <meta charset="UTF-8" />
   <title>Super Breakout LIVE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
     html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       background: #0b0e11;
       color: #cfd3dc;
-      height: 100%;
+      overflow: hidden;
+    }
+
+    #chart {
       width: 100%;
+      height: 100%;
     }
   </style>
 </head>
+
 <body>
-  <div id="chart" style="width:100vw;height:100vh;"></div>
+  <div id="chart"></div>
 
-<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script type="module">
+    import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
 
-<script>
-  const chart = LightweightCharts.createChart(document.getElementById('chart'), {
-    layout: {
-      background: { color: '#0b0e11' },
-      textColor: '#cfd3dc',
-    },
-    grid: {
-      vertLines: { color: '#1e2329' },
-      horzLines: { color: '#1e2329' },
-    },
-    timeScale: {
-      timeVisible: true,
-      secondsVisible: false,
-    },
-  });
+    console.log("SCRIPT STARTED");
 
-  const candleSeries = chart.addCandlestickSeries();
+    const chart = createChart(document.getElementById('chart'), {
+      layout: {
+        background: { color: '#0b0e11' },
+        textColor: '#cfd3dc',
+      },
+      grid: {
+        vertLines: { color: '#1e2329' },
+        horzLines: { color: '#1e2329' },
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
 
-  console.log('Chart initialized OK');
-</script>
+    const candles = chart.addCandlestickSeries({
+      upColor: '#0ecb81',
+      downColor: '#f6465d',
+      borderVisible: false,
+      wickUpColor: '#0ecb81',
+      wickDownColor: '#f6465d',
+    });
+
+    const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_15m');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      const k = msg.k;
+
+      candles.update({
+        time: k.t / 1000,
+        open: parseFloat(k.o),
+        high: parseFloat(k.h),
+        low: parseFloat(k.l),
+        close: parseFloat(k.c),
+      });
+    };
+
+    ws.onerror = (e) => {
+      console.error("WS ERROR", e);
+    };
+  </script>
 </body>
 </html>
