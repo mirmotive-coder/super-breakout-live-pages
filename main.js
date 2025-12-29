@@ -1,50 +1,83 @@
-const chart = LightweightCharts.createChart(
-  document.getElementById('chart'),
-  {
-    layout: {
-      background: { color: '#0b0e11' },
-      textColor: '#d1d4dc',
-    },
-    grid: {
-      vertLines: { color: '#1e222d' },
-      horzLines: { color: '#1e222d' },
-    },
-    timeScale: {
-      timeVisible: true,
-      secondsVisible: false,
-    },
-  }
-);
+// ===== Super Breakout – Stable Core =====
+// Chart engine: lightweight-charts
+// Purpose: price-anchored zones foundation
 
-const candleSeries = chart.addCandlestickSeries({
-  upColor: '#0ECB81',
-  downColor: '#F6465D',
-  borderDownColor: '#F6465D',
-  borderUpColor: '#0ECB81',
-  wickDownColor: '#F6465D',
-  wickUpColor: '#0ECB81',
+import { createChart } from 'https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.esm.production.js';
+
+// ---------- CHART ----------
+const chart = createChart(document.body, {
+  layout: {
+    background: { color: '#0b0e11' },
+    textColor: '#cfd3dc',
+  },
+  grid: {
+    vertLines: { color: '#1e2329' },
+    horzLines: { color: '#1e2329' },
+  },
+  timeScale: {
+    timeVisible: true,
+    secondsVisible: false,
+  },
 });
 
-const statusEl = document.getElementById('status');
-const lastUpdateEl = document.getElementById('lastUpdate');
+const candleSeries = chart.addCandlestickSeries();
 
-let lastMessageTime = Date.now();
+// ---------- ZONE MANAGER ----------
+class ZoneManager {
+  constructor(chart, series) {
+    this.chart = chart;
+    this.series = series;
+    this.zones = [];
+  }
 
+  addZone(zone) {
+    this.zones.push(zone);
+  }
+
+  render() {
+    const priceScale = this.series.priceScale();
+    const timeScale = this.chart.timeScale();
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    this.zones.forEach(z => {
+      const y1 = priceScale.priceToCoordinate(z.priceHigh);
+      const y2 = priceScale.priceToCoordinate(z.priceLow);
+      const x1 = timeScale.timeToCoordinate(z.timeStart);
+      const x2 = timeScale.timeToCoordinate(z.timeEnd);
+
+      if ([x1, x2, y1, y2].includes(null)) return;
+
+      ctx.save();
+      ctx.fillStyle = z.color;
+      ctx.globalAlpha = z.alpha;
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.restore();
+    });
+  }
+}
+
+const zoneManager = new ZoneManager(chart, candleSeries);
+
+// ---------- TEST ZONE (VACUUM) ----------
+zoneManager.addZone({
+  type: 'vacuum',
+  priceLow: 64000,
+  priceHigh: 66000,
+  timeStart: Math.floor(Date.now() / 1000) - 3600 * 6,
+  timeEnd: Math.floor(Date.now() / 1000) + 3600 * 6,
+  color: 'rgb(0,180,255)',
+  alpha: 0.25,
+});
+
+// ---------- BINANCE FUTURES WS ----------
 const ws = new WebSocket(
   'wss://fstream.binance.com/ws/btcusdt@kline_15m'
 );
 
-ws.onopen = () => {
-  statusEl.textContent = 'Savienojums: LIVE';
-};
-
-ws.onclose = () => {
-  statusEl.textContent = 'Savienojums: ATVIENOTS';
-};
-
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  const k = data.k;
+  const msg = JSON.parse(event.data);
+  const k = msg.k;
 
   const candle = {
     time: k.t / 1000,
@@ -55,24 +88,5 @@ ws.onmessage = (event) => {
   };
 
   candleSeries.update(candle);
-
-  lastMessageTime = Date.now();
-  lastUpdateEl.textContent =
-    'Pēdējais atjauninājums: ' +
-    new Date().toLocaleTimeString();
+  zoneManager.render();
 };
-
-// stale detection (vienkāršs)
-setInterval(() => {
-  if (Date.now() - lastMessageTime > 5000) {
-    statusEl.textContent = 'Savienojums: STALE';
-  }
-}, 2000);
-
-// resize
-window.addEventListener('resize', () => {
-  chart.applyOptions({
-    width: document.getElementById('chart').clientWidth,
-    height: document.getElementById('chart').clientHeight,
-  });
-});
