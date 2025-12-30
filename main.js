@@ -1,84 +1,55 @@
-// main.js — SUPER BREAKOUT LIVE
-// WS → StateEngine → UI (single clean pipeline)
-
 import { runStateEngine } from './stateEngine/index.js';
 
-// ===== INIT STATE ENGINE =====
+// ===== UI INIT =====
+const statusEl = document.getElementById('status');
+const stateEl = document.getElementById('state');
+
+// Ja tev HTML nav šādu elementu, tas nekas — vienkārši nerādīs tekstu.
+const signatureEl = document.getElementById('signature');
+const patternEl = document.getElementById('pattern');
+
 const engine = runStateEngine();
 
-// ===== SAFE UI HELPERS =====
-const statusEl = document.getElementById('status');
-const stateEl  = document.getElementById('state');
-const debugEl  = document.getElementById('debug');
+// ===== WEBSOCKET =====
+const ws = new WebSocket('wss://fstream.binance.com/ws/btcusdt@kline_1m');
 
-function setText(el, text) {
-  if (el) el.textContent = text;
-}
+ws.onopen = () => {
+  console.log('[WS] Connected');
+  if (statusEl) statusEl.textContent = 'Connected';
+};
 
-setText(statusEl, 'Connecting...');
+ws.onerror = (e) => {
+  console.error('[WS] Error', e);
+  if (statusEl) statusEl.textContent = 'WS error';
+};
 
-// ===== BINANCE WS CONFIG =====
-const SYMBOL = 'btcusdt';
-const TF = '1m';
-const WS_URL = `wss://fstream.binance.com/ws/${SYMBOL}@kline_${TF}`;
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (!msg.k) return;
 
-let ws;
+  const k = msg.k;
 
-// ===== CONNECT FUNCTION =====
-function connect() {
-  ws = new WebSocket(WS_URL);
+  engine.onCandle({
+    time: k.t / 1000,
+    open: +k.o,
+    high: +k.h,
+    low: +k.l,
+    close: +k.c,
+  });
 
-  ws.onopen = () => {
-    console.log('[WS] Connected');
-    setText(statusEl, 'Connected');
-  };
+  const s = engine.getState();
 
-  ws.onerror = () => {
-    setText(statusEl, 'WS error');
-  };
+  if (stateEl) {
+    stateEl.textContent = `STATE: ${s.state} | CONF: ${s.confidence}`;
+  }
 
-  ws.onclose = () => {
-    setText(statusEl, 'Reconnecting...');
-    setTimeout(connect, 1200);
-  };
+  if (signatureEl) {
+    signatureEl.textContent = `RESONANCE: ${s.signature} | axis=${s.axis} | coh=${s.coherence}`;
+  }
 
-  ws.onmessage = (e) => {
-    let msg;
-    try {
-      msg = JSON.parse(e.data);
-    } catch {
-      return;
-    }
-
-    if (!msg.k) return;
-
-    const k = msg.k;
-
-    const candle = {
-      time: k.t / 1000,
-      open: +k.o,
-      high: +k.h,
-      low:  +k.l,
-      close:+k.c,
-    };
-
-    // === FEED STATE ENGINE ===
-    engine.onCandle(candle);
-
-    // === READ STATE ===
-    const s = engine.getState();
-
-    setText(
-      stateEl,
-      `STATE: ${s.state} | CONF: ${s.confidence.toFixed(3)}`
-    );
-
-    if (debugEl && s.debug) {
-      debugEl.textContent =
-        `candles=${s.debug.candles} | compressScore=${s.debug.compressScore}`;
-    }
-  };
-}
-
-// ===== START =====
-connect();
+  if (patternEl) {
+    const p = s.pattern || {};
+    patternEl.textContent =
+      `PATTERN: ${p.matchLabel || ''} | score=${p.matchScore ?? 0} | samples=${p.samples ?? 0}`;
+  }
+};
