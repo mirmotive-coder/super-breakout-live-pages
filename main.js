@@ -25,14 +25,21 @@ ws.onmessage = (e) => {
 
   const k = msg.k;
 
-  const marketData = {
+  engine.onCandle({
+    time: k.t / 1000,
     open: +k.o,
     high: +k.h,
     low: +k.l,
     close: +k.c,
-    volume: +k.v,
-    time: k.t
-  };
+  });
+
+  // === READ STATE ENGINE ===
+  const { state, confidence } = engine.getState();
+
+  if (stateEl) {
+    stateEl.textContent = `STATE: ${state} | CONF: ${confidence}`;
+  }
+};};
 
   const result = runStateEngine(marketData);
 
