@@ -9,13 +9,38 @@ export function runStateEngine() {
   let state = 'INIT';
   let confidence = 0;
 
+  // === INTERNAL MEMORY ===
+  const candles = [];
+  const MAX_CANDLES = 20;
+
+  let compressScore = 0;
+
   // === INPUT: CANDLE STREAM ===
-  function onCandle(candle) {k
+  function onCandle(candle) {
     // candle = { time, open, high, low, close }
 
-    // pagaidām vienkārša dzīvības pazīme
+    candles.push(candle);
+    if (candles.length > MAX_CANDLES) {
+      candles.shift();
+    }
+
+    if (candles.length < 5) {
+      state = 'WAIT';
+      confidence = 0.1;
+      return;
+    }
+
+    // === COMPRESS OBSERVATION (NO DECISION YET) ===
+    const highs = candles.map(c => c.high);
+    const lows  = candles.map(c => c.low);
+
+    const range = Math.max(...highs) - Math.min(...lows);
+
+    // vienkārša normalizēta dzīvības metrika
+    compressScore = 1 / range;
+
     state = 'WAIT';
-    confidence = 0.1;
+    confidence = Math.min(0.2 + compressScore * 0.01, 0.4);
   }
 
   // === OUTPUT: UI / OBSERVER ===
@@ -23,6 +48,10 @@ export function runStateEngine() {
     return {
       state,
       confidence,
+      debug: {
+        candles: candles.length,
+        compressScore: Number(compressScore.toFixed(4)),
+      },
     };
   }
 
