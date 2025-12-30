@@ -1,56 +1,48 @@
-// main.js
-// Super Breakout – Application Entry Point
-// ŠEIT notiek:
-// - WebSocket savienojums
-// - candle atjaunināšana
-// - State Engine izsaukšana
-
 import { runStateEngine } from './stateEngine/index.js';
 
-// ===== Chart init (pieņemot, ka chart jau ir izveidots iepriekš) =====
+// ===== UI INIT =====
 const statusEl = document.getElementById('status');
 
-// ===== WebSocket: Binance BTCUSDT 1m =====
-const ws = new WebSocket(
-  'wss://fstream.binance.com/ws/btcusdt@kline_1m'
-);
+// ===== STATE ENGINE =====
+const engine = runStateEngine();
 
-ws.onopen = () => {
-  console.log('[WS] Connected');
-  if (statusEl) {
-    statusEl.textContent = 'Connected';
-    statusEl.style.background = '#0f5132';
-  }
-};
+// ===== WEBSOCKET START (DELAYED) =====
+function startWebSocket() {
+  const ws = new WebSocket(
+    'wss://fstream.binance.com/ws/btcusdt@kline_1m'
+  );
 
-ws.onerror = () => {
-  console.error('[WS] Error');
-  if (statusEl) {
-    statusEl.textContent = 'WebSocket error';
-    statusEl.style.background = '#842029';
-  }
-};
-
-ws.onmessage = (e) => {
-  const msg = JSON.parse(e.data);
-  if (!msg.k) return;
-
-  const k = msg.k;
-
-  // ===== RAW market data (tīri dati) =====
-  const rawMarketData = {
-    open: +k.o,
-    high: +k.h,
-    low: +k.l,
-    close: +k.c,
-    volume: +k.v,
-    isFinal: k.x,
-    time: k.t,
+  ws.onopen = () => {
+    console.log('[WS] Connected');
+    if (statusEl) statusEl.textContent = 'Connected';
   };
 
-  // ===== STATE ENGINE =====
-  const stateResult = runStateEngine(rawMarketData);
+  ws.onerror = (e) => {
+    console.error('[WS] Error', e);
+    if (statusEl) statusEl.textContent = 'WS error';
+  };
 
-  // ===== DEBUG (obligāti pagaidām) =====
-  console.log('[STATE]', stateResult);
-};
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (!msg.k) return;
+
+    const k = msg.k;
+    const candle = {
+      time: k.t / 1000,
+      open: +k.o,
+      high: +k.h,
+      low: +k.l,
+      close: +k.c,
+    };
+
+    engine.onCandle(candle);
+  };
+}
+
+// ===== SAFE BOOT =====
+window.addEventListener('load', () => {
+  console.log('[APP] Loaded');
+
+  // IMPORTANT: nekad nestartē WS uzreiz
+  setTimeout(startWebSocket, 1500);
+});
