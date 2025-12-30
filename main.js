@@ -4,6 +4,9 @@ import { runStateEngine } from './stateEngine/index.js';
 const statusEl = document.getElementById('status');
 const stateEl = document.getElementById('state');
 
+// ===== STATE ENGINE INIT =====
+const engine = runStateEngine();
+
 // ===== WEBSOCKET =====
 const ws = new WebSocket(
   'wss://fstream.binance.com/ws/btcusdt@kline_1m'
@@ -25,6 +28,7 @@ ws.onmessage = (e) => {
 
   const k = msg.k;
 
+  // === FEED CANDLE INTO STATE ENGINE ===
   engine.onCandle({
     time: k.t / 1000,
     open: +k.o,
@@ -38,15 +42,5 @@ ws.onmessage = (e) => {
 
   if (stateEl) {
     stateEl.textContent = `STATE: ${state} | CONF: ${confidence}`;
-  }
-};};
-
-  const result = runStateEngine(marketData);
-
-  if (!result) return;
-
-  if (stateEl) {
-    stateEl.textContent =
-      `STATE: ${result.state} | CONF: ${result.confidence}`;
   }
 };
