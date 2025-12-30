@@ -10,7 +10,7 @@ export function runStateEngine() {
   let confidence = 0;
 
   // === INPUT: CANDLE STREAM ===
-  function onCandle(candle) {
+  function onCandle(candle) {k
     // candle = { time, open, high, low, close }
 
     // pagaidām vienkārša dzīvības pazīme
