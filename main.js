@@ -2,47 +2,44 @@ import { runStateEngine } from './stateEngine/index.js';
 
 // ===== UI INIT =====
 const statusEl = document.getElementById('status');
+const stateEl = document.getElementById('state');
 
-// ===== STATE ENGINE =====
-const engine = runStateEngine();
+// ===== WEBSOCKET =====
+const ws = new WebSocket(
+  'wss://fstream.binance.com/ws/btcusdt@kline_1m'
+);
 
-// ===== WEBSOCKET START (DELAYED) =====
-function startWebSocket() {
-  const ws = new WebSocket(
-    'wss://fstream.binance.com/ws/btcusdt@kline_1m'
-  );
+ws.onopen = () => {
+  console.log('[WS] Connected');
+  if (statusEl) statusEl.textContent = 'Connected';
+};
 
-  ws.onopen = () => {
-    console.log('[WS] Connected');
-    if (statusEl) statusEl.textContent = 'Connected';
+ws.onerror = (e) => {
+  console.error('[WS] Error', e);
+  if (statusEl) statusEl.textContent = 'WS error';
+};
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  if (!msg.k) return;
+
+  const k = msg.k;
+
+  const marketData = {
+    open: +k.o,
+    high: +k.h,
+    low: +k.l,
+    close: +k.c,
+    volume: +k.v,
+    time: k.t
   };
 
-  ws.onerror = (e) => {
-    console.error('[WS] Error', e);
-    if (statusEl) statusEl.textContent = 'WS error';
-  };
+  const result = runStateEngine(marketData);
 
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (!msg.k) return;
+  if (!result) return;
 
-    const k = msg.k;
-    const candle = {
-      time: k.t / 1000,
-      open: +k.o,
-      high: +k.h,
-      low: +k.l,
-      close: +k.c,
-    };
-
-    engine.onCandle(candle);
-  };
-}
-
-// ===== SAFE BOOT =====
-window.addEventListener('load', () => {
-  console.log('[APP] Loaded');
-
-  // IMPORTANT: nekad nestartē WS uzreiz
-  setTimeout(startWebSocket, 1500);
-});
+  if (stateEl) {
+    stateEl.textContent =
+      `STATE: ${result.state} | CONF: ${result.confidence}`;
+  }
+};
