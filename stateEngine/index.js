@@ -1,16 +1,34 @@
 // stateEngine/index.js
 // Super Breakout – Core Market State Engine
-// Ideoloģija: COMPRESS → VACUUM → ABSORPTION → RANGE / BREAK
+// Ideoloģija: COMPRESS → VACUUM → ABSORPTION → MOVE
 
 export function runStateEngine() {
   console.log('[STATE ENGINE] initialized');
 
+  // === INTERNAL STATE ===
+  let state = 'INIT';
+  let confidence = 0;
+
+  // === INPUT: CANDLE STREAM ===
+  function onCandle(candle) {
+    // candle = { time, open, high, low, close }
+
+    // pagaidām vienkārša dzīvības pazīme
+    state = 'WAIT';
+    confidence = 0.1;
+  }
+
+  // === OUTPUT: UI / OBSERVER ===
+  function getState() {
+    return {
+      state,
+      confidence,
+    };
+  }
+
+  // === PUBLIC API ===
   return {
-    onCandle(candle) {
-      // pagaidām tikai logs
-      // te vēlāk nāks compress / vacuum / absorption loģika
-      // candle = { time, open, high, low, close }
-      // console.log('[STATE ENGINE] candle', candle);
-    }
+    onCandle,
+    getState,
   };
 }
